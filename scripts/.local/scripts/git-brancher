@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+
+branchName=$1
+baseBranch=$2
+
+function findBaseBranch {
+	if git branch -l | grep -q "master"; then
+		baseBranch="master"
+	elif git branch -l | grep -q "main"; then
+		baseBranch="main"
+	else
+		echo "No master or main branch found"
+		exit 1
+	fi
+}
+
+if [ -z "$branchName" ]; then
+	echo "Branch name is required"
+	exit 1
+fi
+if [ -z "$baseBranch" ]; then
+	findBaseBranch
+fi
+
+git checkout "$baseBranch"
+git pull
+git checkout -b "$branchName"
