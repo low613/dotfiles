@@ -39,6 +39,7 @@ exec --no-startup-id xdotool key --clearmodifiers Num_Lock
 exec_always --no-startup-id workstyle
 exec --no-startup-id nitrogen --restore
 exec_always --no-startup-id autorandr --change
+exec_always --no-startup-id autotiling
 # Use pactl to adjust volume in PulseAudio.
 set $refresh_i3status killall -SIGUSR1 i3status
 bindsym XF86AudioRaiseVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ +10% && $refresh_i3status

@@ -19,14 +19,12 @@ return {
 			sources = {
 				null_ls.builtins.formatting.stylua,
 				null_ls.builtins.formatting.prettier,
-				null_ls.builtins.diagnostics.eslint_d,
 				null_ls.builtins.formatting.puppet_lint,
 				null_ls.builtins.formatting.phpcsfixer,
 				null_ls.builtins.formatting.blade_formatter,
 				null_ls.builtins.diagnostics.puppet_lint,
 				null_ls.builtins.diagnostics.phpstan,
 				null_ls.builtins.code_actions.refactoring,
-				null_ls.builtins.code_actions.eslint_d,
 				null_ls.builtins.code_actions.gomodifytags,
 				null_ls.builtins.code_actions.impl,
 				null_ls.builtins.formatting.goimports,
@@ -34,8 +32,6 @@ return {
 				null_ls.builtins.formatting.terraform_fmt,
 				null_ls.builtins.formatting.prismaFmt,
 				null_ls.builtins.formatting.shfmt,
-				null_ls.builtins.code_actions.shellcheck,
-				null_ls.builtins.formatting.jq,
 			},
 		})
 	end,

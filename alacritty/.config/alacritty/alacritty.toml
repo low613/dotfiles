@@ -43,7 +43,7 @@ green = '#9ece6a'
 #index = 17
 #color = '#db4b4b'
 [font.normal]
-family = "MesloLGS NF"
+family = "Fira Code"
 [window]
 opacity = 0.90
 [keyboard]
