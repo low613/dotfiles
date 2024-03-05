@@ -1,0 +1,13 @@
+profile {
+				output eDP-1 mode 1920x1200@59.95Hz position 0,0
+				output "Goldstar Company Ltd MP59HT 709NTGY08383" mode 1920x1080@75Hz position 1920,0
+}
+
+profile {
+				output eDP-1 mode 1920x1200@59.95Hz position 0,1360
+				output "Dell Inc. DELL S2722DC 2HYQGD3" mode 2560x1440@75Hz position 1920,1120
+				output "Dell Inc. DELL S2722DC BW9WGD3" mode 2560x1440@75Hz position 4480,0 transform 90
+}
+profile {
+				output eDP-1 mode 1920x1200@59.95Hz position 0,0
+}

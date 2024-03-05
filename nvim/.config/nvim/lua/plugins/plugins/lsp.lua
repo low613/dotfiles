@@ -74,14 +74,24 @@ return {
 			local servers = {
 				lua_ls = {
 					Lua = {
-						workspace = { checkThirdParty = false },
+						runtime = { version = "LuaJIT" },
+						workspace = {
+							checkThirdParty = false,
+							library = {
+								"${3rd}/lua/library",
+								unpack(vim.api.nvim_get_runtime_file("", true)),
+							},
+						},
+						completion = {
+							callSnippet = "Replace",
+						},
 						telemetry = { enable = false },
 					},
 				},
 			}
 			require("neodev").setup()
 			local capabilities = vim.lsp.protocol.make_client_capabilities()
-			capabilities = require("cmp_nvim_lsp").default_capabilities(capabilities)
+			capabilities = vim.tbl_extend("force", capabilities, require("cmp_nvim_lsp").default_capabilities())
 			local mason_lspconfig = require("mason-lspconfig")
 
 			mason_lspconfig.setup({
@@ -121,10 +131,20 @@ return {
 		"hrsh7th/nvim-cmp",
 		dependencies = {
 			"zbirenbaum/copilot-cmp",
-			"L3MON4D3/LuaSnip",
+			{
+				"L3MON4D3/LuaSnip",
+				build = (function()
+					if vim.fn.has("win32") == 1 or vim.fn.executable("make") == 0 then
+						return
+					end
+					return "make install_jsregexp"
+				end)(),
+			},
 			"saadparwaiz1/cmp_luasnip",
 			"hrsh7th/cmp-nvim-lsp",
+			"hrsh7th/cmp-nvim-lua",
 			"hrsh7th/cmp-path",
+			"onsails/lspkind-nvim",
 			"rafamadriz/friendly-snippets",
 			"hrsh7th/cmp-cmdline",
 			"hrsh7th/cmp-buffer",
@@ -132,6 +152,7 @@ return {
 		config = function()
 			local cmp = require("cmp")
 			local luasnip = require("luasnip")
+			local lspkind = require("lspkind")
 			require("luasnip.loaders.from_vscode").lazy_load()
 			luasnip.config.setup({})
 
@@ -142,34 +163,46 @@ return {
 					end,
 				},
 				completion = {
-					completeopt = "menu,menuone,noselect,noinsert",
+					completeopt = "menu,menuone,noinsert",
 				},
-				preselect = cmp.PreselectMode.None,
 				mapping = cmp.mapping.preset.insert({
 					["<C-n>"] = cmp.mapping.select_next_item(),
 					["<C-p>"] = cmp.mapping.select_prev_item(),
 					["<C-Space>"] = cmp.mapping.complete({}),
 					["C-y"] = cmp.mapping.confirm({ select = true }),
-					["C-j"] = cmp.mapping(function(fallback)
-						if luasnip.jumpable(1) then
-							luasnip.jump(1)
-						else
-							fallback()
+					["C-l"] = cmp.mapping(function()
+						if luasnip.expand_or_load_or_locally_jumpable() then
+							luasnip.expand_or_jump()
 						end
 					end, { "i", "s" }),
-					["C-k"] = cmp.mapping(function(fallback)
-						if luasnip.jumpable(-1) then
+					["C-k"] = cmp.mapping(function()
+						if luasnip.locally_jumpable(-1) then
 							luasnip.jump(-1)
-						else
-							fallback()
 						end
 					end, { "i", "s" }),
 				}),
 				sources = {
 					{ name = "nvim_lsp" },
+					{ name = "nvim_lua" },
 					{ name = "luasnip" },
 					{ name = "path" },
 					{ name = "copilot" },
+				},
+				formatting = {
+					fields = { "abbr", "kind", "menu" },
+					expandable_indicator = true,
+					format = lspkind.cmp_format({
+						mode = "symbol_text",
+						show_labelDetails = true,
+						menu = {
+							buffer = "[Buffer]",
+							nvim_lsp = "[LSP]",
+							nvim_lua = "[Lua]",
+							luasnip = "[LuaSnip]",
+							path = "[Path]",
+							copilot = "[Copilot]",
+						},
+					}),
 				},
 			})
 			-- `/` cmdline setup.
