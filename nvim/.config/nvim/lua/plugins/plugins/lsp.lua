@@ -78,7 +78,7 @@ return {
 						workspace = {
 							checkThirdParty = false,
 							library = {
-								"${3rd}/lua/library",
+								"${3rd}/luv/library",
 								unpack(vim.api.nvim_get_runtime_file("", true)),
 							},
 						},
@@ -122,8 +122,19 @@ return {
 				capabilities = capabilities,
 				on_attach = on_attach,
 				root_dir = util.root_pattern(unpack(root_files)),
-				--cmd = { 'puppet-languageserver', '--stdio', "--feature-flags=puppetstrings" },
-				--settings = { puppet = { editorServices = { formatOnType = { enable = true } } } },
+				settings = {
+					puppet = {
+						installType = "pdk",
+						installDirectory = "/opt/puppetlabs/pdk",
+						editorService = {
+							puppet = {
+								installType = "pdk",
+								installDirectory = "/opt/puppetlabs/pdk",
+								version = "7.18.0",
+							},
+						},
+					},
+				},
 			})
 		end,
 	},
@@ -169,13 +180,13 @@ return {
 					["<C-n>"] = cmp.mapping.select_next_item(),
 					["<C-p>"] = cmp.mapping.select_prev_item(),
 					["<C-Space>"] = cmp.mapping.complete({}),
-					["C-y"] = cmp.mapping.confirm({ select = true }),
-					["C-l"] = cmp.mapping(function()
-						if luasnip.expand_or_load_or_locally_jumpable() then
+					["<C-y>"] = cmp.mapping.confirm({ select = true }),
+					["<C-l>"] = cmp.mapping(function()
+						if luasnip.expand_or_locally_jumpable() then
 							luasnip.expand_or_jump()
 						end
 					end, { "i", "s" }),
-					["C-k"] = cmp.mapping(function()
+					["<C-h>"] = cmp.mapping(function()
 						if luasnip.locally_jumpable(-1) then
 							luasnip.jump(-1)
 						end
@@ -225,6 +236,14 @@ return {
 						},
 					},
 				}),
+			})
+		end,
+	},
+	{
+		"kosayoda/nvim-lightbulb",
+		config = function()
+			require("nvim-lightbulb").setup({
+				autocmd = { enabled = true },
 			})
 		end,
 	},

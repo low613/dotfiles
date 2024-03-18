@@ -35,20 +35,34 @@ return {
 		branch = "harpoon2",
 		dependencies = { "nvim-lua/plenary.nvim" },
 		config = function()
-			require("harpoon"):setup({
+			local harpoon = require("harpoon")
+			harpoon:setup({
 				global_settings = {
 					save_on_toggle = false,
 				},
 			})
+			local conf = require("telescope.config").values
+			local function toggle_telescope(harpoon_files)
+				local file_paths = {}
+				for _, item in ipairs(harpoon_files.items) do
+					table.insert(file_paths, item.value)
+				end
+				require("telescope.pickers")
+					.new({}, {
+						prompt_title = "Harpoon",
+						finder = require("telescope.finders").new_table({
+							results = file_paths,
+						}),
+						previewer = conf.file_previewer({}),
+						sorter = conf.generic_sorter({}),
+					})
+					:find()
+			end
+			vim.keymap.set("n", "<leader>hf", function()
+				toggle_telescope(harpoon:list())
+			end, { desc = "Open Harpoon Files" })
 		end,
 		keys = {
-			{
-				"<leader>ha",
-				function()
-					require("harpoon"):list():append()
-				end,
-				desc = "harpoon file",
-			},
 			{
 				"<C-e>",
 				function()
@@ -92,18 +106,57 @@ return {
 				end,
 				desc = "harpoon to file 5",
 			},
+			{
+				"<leader>6",
+				function()
+					require("harpoon"):list():select(6)
+				end,
+			},
+			{
+				"<leader>7",
+				function()
+					require("harpoon"):list():select(7)
+				end,
+			},
+			{
+				"<leader>8",
+				function()
+					require("harpoon"):list():select(8)
+				end,
+			},
+			{
+				"<leader>9",
+				function()
+					require("harpoon"):list():select(9)
+				end,
+			},
+			{
+				"<leader>0",
+				function()
+					require("harpoon"):list():select(10)
+				end,
+			},
+			{
+				"<leader>ha",
+				function()
+					require("harpoon"):list():append()
+				end,
+			},
 		},
 	},
 	{
-		"folke/tokyonight.nvim",
-		lazy = false,
-		priority = 1000,
-		opts = {},
+		"catppuccin/nvim",
+		priority = 100,
+		name = "catppuccin",
 		config = function()
-			require("tokyonight").setup({
-				transparent = true,
+			require("catppuccin").setup({
+				flavour = "mocha",
+				integrations = {
+					which_key = true,
+				},
 			})
-			vim.cmd.colorscheme("tokyonight")
+			vim.o.termguicolors = true
+			vim.cmd.colorscheme("catppuccin")
 		end,
 	},
 	{
@@ -113,7 +166,7 @@ return {
 		opts = {
 			options = {
 				icons_enabled = true,
-				theme = "tokyonight",
+				theme = "catppuccin",
 				component_separators = "|",
 				section_separators = "",
 				disabled_filetypes = {

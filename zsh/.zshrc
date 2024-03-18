@@ -43,7 +43,7 @@ export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$HOME/.
 export VISUAL=nvim
 export EDITOR=$VISUAL
 
-export TERM="xterm-256color"
+# export TERM="xterm-256color"
 export FZF_DEFAULT_OPTS="
 --layout=reverse
 --info=inline
@@ -84,3 +84,7 @@ eval "$(rbenv init -)"
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 export PATH=$PATH:$HOME/.local/scripts/
+export FZF_DEFAULT_OPTS=" \
+--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
+--color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
+--color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8"

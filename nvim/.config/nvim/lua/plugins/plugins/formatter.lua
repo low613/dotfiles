@@ -1,40 +1,3 @@
--- return {
--- 	"nvimtools/none-ls.nvim",
--- 	config = function()
--- 		local null_ls = require("null-ls")
--- 		local augroup = vim.api.nvim_create_augroup("LspFormatting", {})
--- 		null_ls.setup({
--- 			on_attach = function(client, bufnr)
--- 				if client.supports_method("textDocument/formatting") then
--- 					vim.api.nvim_clear_autocmds({ group = augroup, buffer = bufnr })
--- 					vim.api.nvim_create_autocmd("BufWritePre", {
--- 						group = augroup,
--- 						buffer = bufnr,
--- 						callback = function()
--- 							vim.lsp.buf.format({ async = false })
--- 						end,
--- 					})
--- 				end
--- 			end,
--- 			sources = {
--- 				null_ls.builtins.formatting.stylua,
--- 				null_ls.builtins.formatting.prettier,
--- 				null_ls.builtins.formatting.puppet_lint,
--- 				null_ls.builtins.formatting.blade_formatter,
--- 				null_ls.builtins.diagnostics.puppet_lint,
--- 				null_ls.builtins.diagnostics.phpstan,
--- 				null_ls.builtins.code_actions.refactoring,
--- 				null_ls.builtins.code_actions.gomodifytags,
--- 				null_ls.builtins.code_actions.impl,
--- 				null_ls.builtins.formatting.goimports,
--- 				null_ls.builtins.formatting.gofumpt,
--- 				null_ls.builtins.formatting.terraform_fmt,
--- 				null_ls.builtins.formatting.prismaFmt,
--- 				null_ls.builtins.formatting.shfmt,
--- 			},
--- 		})
--- 	end,
--- }
 return {
 	"stevearc/conform.nvim",
 	opts = {},
@@ -49,12 +12,24 @@ return {
 				prisma = { "prismaFmt" },
 				sh = { "shfmt" },
 			},
-		})
-		vim.api.nvim_create_autocmd("BufWritePre", {
-			pattern = "*",
-			callback = function()
-				require("conform").format({ lsp_fallback = true })
+			format_on_save = function(bufnr)
+				-- Disable with a global or buffer-local variable
+				if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
+					return
+				end
+				return { timeout_ms = 500, lsp_fallback = true }
 			end,
+		})
+		vim.api.nvim_create_user_command("FormatDisable", function()
+			vim.g.disable_autoformat = true
+		end, {
+			desc = "Disable autoformat-on-save",
+			bang = true,
+		})
+		vim.api.nvim_create_user_command("FormatEnable", function()
+			vim.g.disable_autoformat = false
+		end, {
+			desc = "Re-enable autoformat-on-save",
 		})
 	end,
 }

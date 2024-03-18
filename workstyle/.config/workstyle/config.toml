@@ -9,6 +9,8 @@
 # Note if multiple patterns are present in the same application name,
 # precedence is given in order of apparition in this file.
 "alacritty" = ""
+"kitty" = ""
+"Kitty" = ""
 "github" = ""
 "rust" = ""
 "google" = ""
@@ -58,6 +60,7 @@
 '/node/' = ''
 '/yarn/' = ''
 'Alacritty' = ''
+'/tmux/' = ''
 
 [other]
 fallback_icon = "🤨"

@@ -21,20 +21,7 @@ return {
 			},
 		})
 		require("nvim-treesitter.configs").setup({
-			ensure_installed = {
-				"c",
-				"cpp",
-				"go",
-				"lua",
-				"python",
-				"rust",
-				"tsx",
-				"javascript",
-				"typescript",
-				"vimdoc",
-				"vim",
-				"bash",
-			},
+			ensure_installed = "all",
 
 			auto_install = true,
 			sync_install = false,
@@ -61,6 +48,7 @@ return {
 						["af"] = "@function.outer",
 						["if"] = "@function.inner",
 						["ac"] = "@class.outer",
+						["aP"] = "@parameter.outer",
 						["ic"] = { query = "@class.inner", desc = "Select inner part of a class region" },
 						["as"] = { query = "@scope", query_group = "locals", desc = "Select language scope" },
 					},

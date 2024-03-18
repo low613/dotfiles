@@ -11,3 +11,8 @@ profile {
 profile {
 				output eDP-1 mode 1920x1200@59.95Hz position 0,0
 }
+
+profile {
+				output eDP-1 mode 1920x1200@59.95Hz position 0,300
+				output "Dell Inc. DELL U2723QE 4578BP3" mode 3840x2160@60Hz position 1920,0 scale 1
+}
