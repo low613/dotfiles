@@ -31,8 +31,10 @@ return {
 			"williamboman/mason-lspconfig.nvim",
 			{ "j-hui/fidget.nvim", opts = {} },
 			"folke/neodev.nvim",
+			"folke/neoconf.nvim",
 		},
 		config = function()
+			require("neoconf").setup({})
 			local on_attach = function(_, bufnr)
 				local navic = require("nvim-navic")
 				if _.server_capabilities.documentSymbolProvider then
@@ -109,33 +111,11 @@ return {
 					})
 				end,
 			})
-			local lspconfig = require("lspconfig")
-			local util = require("lspconfig.util")
-
-			local root_files = {
-				".puppet-lint.rc",
-				"hiera.yaml",
-				".git",
-			}
-
-			lspconfig.puppet.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-				root_dir = util.root_pattern(unpack(root_files)),
-				settings = {
-					puppet = {
-						installType = "pdk",
-						installDirectory = "/opt/puppetlabs/pdk",
-						editorService = {
-							puppet = {
-								installType = "pdk",
-								installDirectory = "/opt/puppetlabs/pdk",
-								version = "7.18.0",
-							},
-						},
-					},
-				},
-			})
+			local signs = { Error = "󰅚 ", Warn = "󰀪 ", Hint = "󰌶 ", Info = " " }
+			for type, icon in pairs(signs) do
+				local hl = "DiagnosticSign" .. type
+				vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = hl })
+			end
 		end,
 	},
 	{
@@ -198,6 +178,7 @@ return {
 					{ name = "luasnip" },
 					{ name = "path" },
 					{ name = "copilot" },
+					{ name = "cody" },
 				},
 				formatting = {
 					fields = { "abbr", "kind", "menu" },
@@ -212,6 +193,7 @@ return {
 							luasnip = "[LuaSnip]",
 							path = "[Path]",
 							copilot = "[Copilot]",
+							cody = "[Cody]",
 						},
 					}),
 				},

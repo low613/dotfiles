@@ -18,6 +18,7 @@ plugins=(
     kubectl
     helm
     aws
+    zsh-vi-mode
 )
 
 source $ZSH/oh-my-zsh.sh
