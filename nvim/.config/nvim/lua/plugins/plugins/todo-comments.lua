@@ -7,7 +7,7 @@ return {
 		-- WARNING: warning
 		-- NOTE: note
 		"folke/todo-comments.nvim",
-		dependancies = { "nvim-lua/plenary.nvim" },
+		dependencies = { "nvim-lua/plenary.nvim" },
 		config = function()
 			local todo = require("todo-comments")
 			todo.setup({})

@@ -174,7 +174,7 @@ return {
 				},
 			},
 		},
-		config = function(self, opts)
+		config = function(opts)
 			require("lualine").setup({
 				options = opts.options,
 				sections = {
@@ -202,9 +202,6 @@ return {
 		main = "ibl",
 		opts = {},
 	},
-
-	-- "gc" to comment visual regions/lines
-	{ "numToStr/Comment.nvim", opts = {} },
 	{ -- Collection of various small independent plugins/modules
 		"echasnovski/mini.nvim",
 		config = function()

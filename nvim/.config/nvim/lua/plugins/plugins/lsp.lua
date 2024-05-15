@@ -29,12 +29,13 @@ return {
 		dependencies = {
 			{ "williamboman/mason.nvim", config = true },
 			"williamboman/mason-lspconfig.nvim",
-			{ "j-hui/fidget.nvim", opts = {} },
+			{ "j-hui/fidget.nvim",       opts = {} },
 			"folke/neodev.nvim",
 			"folke/neoconf.nvim",
 		},
 		config = function()
 			require("neoconf").setup({})
+			vim.filetype.add({ extension = { templ = "templ" } })
 			local on_attach = function(_, bufnr)
 				local navic = require("nvim-navic")
 				if _.server_capabilities.documentSymbolProvider then
@@ -74,6 +75,29 @@ return {
 			require("mason-lspconfig").setup()
 
 			local servers = {
+				yamlls = {
+					yaml = {
+						schemas = {
+							kubernetes = "*.yaml",
+							["http://json.schemastore.org/github-workflow"] = ".github/workflows/*",
+							["http://json.schemastore.org/github-action"] = ".github/action.{yml,yaml}",
+							["http://json.schemastore.org/ansible-stable-2.9"] = "roles/tasks/*.{yml,yaml}",
+							["http://json.schemastore.org/prettierrc"] = ".prettierrc.{yml,yaml}",
+							["http://json.schemastore.org/kustomization"] = "kustomization.{yml,yaml}",
+							["http://json.schemastore.org/ansible-playbook"] = "*play*.{yml,yaml}",
+							["http://json.schemastore.org/chart"] = "Chart.{yml,yaml}",
+							["https://json.schemastore.org/dependabot-v2"] = ".github/dependabot.{yml,yaml}",
+							["https://json.schemastore.org/gitlab-ci"] = "*gitlab-ci*.{yml,yaml}",
+							["https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/schemas/v3.1/schema.json"] =
+							"*api*.{yml,yaml}",
+							["https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json"] =
+							"*docker-compose*.{yml,yaml}",
+							["https://raw.githubusercontent.com/argoproj/argo-workflows/master/api/jsonschema/schema.json"] =
+							"*flow*.{yml,yaml}",
+						},
+					},
+				},
+
 				lua_ls = {
 					Lua = {
 						runtime = { version = "LuaJIT" },

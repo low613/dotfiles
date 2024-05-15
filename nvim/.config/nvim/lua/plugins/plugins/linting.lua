@@ -5,6 +5,7 @@ return {
 		config = function()
 			require("lint").linters_by_ft = {
 				php = { "phpstan", "phpcs" },
+				terraform = { "tflint" },
 			}
 			local phpcs = require("lint").linters.phpcs
 			local phpcs_bin = "phpcs"

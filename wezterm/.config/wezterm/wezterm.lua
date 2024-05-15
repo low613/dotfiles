@@ -13,4 +13,5 @@ config.keys = {
 	},
 	{ key = "l", mods = "ALT", action = wezterm.action.ShowLauncherArgs({ flags = "FUZZY|TABS|WORKSPACES" }) },
 }
+config.term = "wezterm"
 return config

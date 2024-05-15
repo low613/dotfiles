@@ -4,6 +4,7 @@
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
+setopt COMBINING_CHARS
 
 export ZSH="/home/eli/.oh-my-zsh"
 #ZSH_THEME="agnoster"
@@ -37,7 +38,6 @@ alias vpnstatus='sudo wg show'
 alias vnc_pi='ssh -fL 9901:localhost:5901 pi@192.168.1.10 sleep 10; xtigervncviewer localhost:9901'
 eval "$(gh completion -s zsh)"
 alias vim="nvim"
-
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$HOME/.local/bin:$PATH"
@@ -89,3 +89,7 @@ export FZF_DEFAULT_OPTS=" \
 --color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
 --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
 --color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8"
+export PATH=$PATH:$HOME/go/bin
+
+# add Pulumi to the PATH
+export PATH=$PATH:/home/eli/.pulumi/bin

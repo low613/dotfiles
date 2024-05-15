@@ -1,7 +1,7 @@
 return {
-	{
-		"sourcegraph/sg.nvim",
-		dependancies = { "nvim-lua/plenary.nvim" },
-		opts = {},
-	},
+	-- {
+	-- 	"sourcegraph/sg.nvim",
+	-- 	dependancies = { "nvim-lua/plenary.nvim" },
+	-- 	opts = {},
+	-- },
 }

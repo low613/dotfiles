@@ -9,9 +9,9 @@ return {
 				typescript = { "prettier" },
 				puppet = { "puppet-lint" },
 				blade = { "blade-formatter" },
-				prisma = { "prismaFmt" },
 				sh = { "shfmt" },
 				php = { "phpcbf" },
+				go = { "gofmt", "goimports" },
 			},
 			format_on_save = function(bufnr)
 				-- Disable with a global or buffer-local variable
