@@ -10,7 +10,7 @@ return {
 					show_hidden = true,
 				},
 			})
-			vim.keymap.set("n", "-", "<CMD>Oil<CMD>")
+			vim.keymap.set("n", "-", "<CMD>Oil<CR>")
 		end,
 	},
 }

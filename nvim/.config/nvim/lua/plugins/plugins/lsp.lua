@@ -29,7 +29,7 @@ return {
 		dependencies = {
 			{ "williamboman/mason.nvim", config = true },
 			"williamboman/mason-lspconfig.nvim",
-			{ "j-hui/fidget.nvim",       opts = {} },
+			{ "j-hui/fidget.nvim", opts = {} },
 			"folke/neodev.nvim",
 			"folke/neoconf.nvim",
 		},
@@ -70,6 +70,7 @@ return {
 				vim.api.nvim_buf_create_user_command(bufnr, "Format", function(_)
 					vim.lsp.buf.format()
 				end, { desc = "Format current buffer with LSP" })
+				vim.lsp.inlay_hint.enable()
 			end
 			require("mason").setup()
 			require("mason-lspconfig").setup()
@@ -88,18 +89,18 @@ return {
 							["http://json.schemastore.org/chart"] = "Chart.{yml,yaml}",
 							["https://json.schemastore.org/dependabot-v2"] = ".github/dependabot.{yml,yaml}",
 							["https://json.schemastore.org/gitlab-ci"] = "*gitlab-ci*.{yml,yaml}",
-							["https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/schemas/v3.1/schema.json"] =
-							"*api*.{yml,yaml}",
-							["https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json"] =
-							"*docker-compose*.{yml,yaml}",
-							["https://raw.githubusercontent.com/argoproj/argo-workflows/master/api/jsonschema/schema.json"] =
-							"*flow*.{yml,yaml}",
+							["https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/schemas/v3.1/schema.json"] = "*api*.{yml,yaml}",
+							["https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json"] = "*docker-compose*.{yml,yaml}",
+							["https://raw.githubusercontent.com/argoproj/argo-workflows/master/api/jsonschema/schema.json"] = "*flow*.{yml,yaml}",
 						},
 					},
 				},
 
 				lua_ls = {
 					Lua = {
+						hint = {
+							enable = true,
+						},
 						runtime = { version = "LuaJIT" },
 						workspace = {
 							checkThirdParty = false,
@@ -112,6 +113,19 @@ return {
 							callSnippet = "Replace",
 						},
 						telemetry = { enable = false },
+					},
+				},
+				gopls = {
+					gopls = {
+						hints = {
+							assignVariableTypes = true,
+							compositeLiteralFields = true,
+							compositeLiteralTypes = true,
+							constantValues = true,
+							functionTypeParameters = true,
+							parameterNames = true,
+							rangeVariableTypes = true,
+						},
 					},
 				},
 			}
