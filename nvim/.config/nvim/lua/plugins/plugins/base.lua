@@ -175,6 +175,15 @@ return {
 			},
 		},
 		config = function(opts)
+			local trouble = require("trouble")
+			local symbols = trouble.statusline({
+				mode = "lsp_document_symbols",
+				groups = {},
+				title = false,
+				filter = { range = true },
+				format = "{kind_icon}{symbol.name:Normal}",
+				hl_group = "lualine_c_normal",
+			})
 			require("lualine").setup({
 				options = opts.options,
 				sections = {
@@ -183,15 +192,13 @@ return {
 				winbar = {
 					lualine_c = {
 						{
-							"navic",
-							color_correction = nil,
-							navic_opts = nil,
+							symbols.get,
+							cond = symbols.has,
 						},
 					},
 				},
 			})
 		end,
-		dependencies = { "SmiteshP/nvim-navic" },
 	},
 
 	{

@@ -2,45 +2,65 @@ return {
 	{
 		"folke/trouble.nvim",
 		dependencies = { "nvim-tree/nvim-web-devicons" },
-		config = function()
-			-- Lua
-			vim.keymap.set("n", "<leader>xx", function()
-				require("trouble").toggle()
-			end)
-			vim.keymap.set("n", "<leader>xw", function()
-				require("trouble").toggle("workspace_diagnostics")
-			end)
-			vim.keymap.set("n", "<leader>xd", function()
-				require("trouble").toggle("document_diagnostics")
-			end)
-			vim.keymap.set("n", "<leader>xq", function()
-				require("trouble").toggle("quickfix")
-			end)
-			vim.keymap.set("n", "<leader>xl", function()
-				require("trouble").toggle("loclist")
-			end)
-			vim.keymap.set("n", "gR", function()
-				require("trouble").toggle("lsp_references")
-			end)
-		end,
+		cmd = "Trouble",
+		keys = {
+			{
+				"<leader>xx",
+				"<cmd>Trouble diagnostics toggle<cr>",
+				desc = "Diagnostics (Trouble)",
+			},
+			{
+				"<leader>xX",
+				"<cmd>Trouble diagnostics toggle filter.buf=0<cr>",
+				desc = "Buffer Diagnostics (Trouble)",
+			},
+			{
+				"<leader>cs",
+				"<cmd>Trouble symbols toggle focus=false<cr>",
+				desc = "Symbols (Trouble)",
+			},
+			{
+				"<leader>cl",
+				"<cmd>Trouble lsp toggle focus=false win.position=right<cr>",
+				desc = "LSP Definitions / references / ... (Trouble)",
+			},
+			{
+				"<leader>xL",
+				"<cmd>Trouble loclist toggle<cr>",
+				desc = "Location List (Trouble)",
+			},
+			{
+				"<leader>xQ",
+				"<cmd>Trouble qflist toggle<cr>",
+				desc = "Quickfix List (Trouble)",
+			},
+		},
+		opts = {
+			open_no_results = true,
+		},
 	},
+	{
+		"folke/lazydev.nvim",
+		ft = "lua",
+		opts = {
+			library = {
+				"luvit-meta/library",
+			},
+		},
+	},
+	{ "Bilal2453/luvit-meta", lazy = true },
 	{
 		"neovim/nvim-lspconfig",
 		dependencies = {
 			{ "williamboman/mason.nvim", config = true },
 			"williamboman/mason-lspconfig.nvim",
-			{ "j-hui/fidget.nvim", opts = {} },
-			"folke/neodev.nvim",
+			{ "j-hui/fidget.nvim",       opts = {} },
 			"folke/neoconf.nvim",
 		},
 		config = function()
 			require("neoconf").setup({})
 			vim.filetype.add({ extension = { templ = "templ" } })
 			local on_attach = function(_, bufnr)
-				local navic = require("nvim-navic")
-				if _.server_capabilities.documentSymbolProvider then
-					navic.attach(_, bufnr)
-				end
 				local nmap = function(keys, func, desc)
 					if desc then
 						desc = "LSP: " .. desc
@@ -89,9 +109,12 @@ return {
 							["http://json.schemastore.org/chart"] = "Chart.{yml,yaml}",
 							["https://json.schemastore.org/dependabot-v2"] = ".github/dependabot.{yml,yaml}",
 							["https://json.schemastore.org/gitlab-ci"] = "*gitlab-ci*.{yml,yaml}",
-							["https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/schemas/v3.1/schema.json"] = "*api*.{yml,yaml}",
-							["https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json"] = "*docker-compose*.{yml,yaml}",
-							["https://raw.githubusercontent.com/argoproj/argo-workflows/master/api/jsonschema/schema.json"] = "*flow*.{yml,yaml}",
+							["https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/schemas/v3.1/schema.json"] =
+							"*api*.{yml,yaml}",
+							["https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json"] =
+							"*docker-compose*.{yml,yaml}",
+							["https://raw.githubusercontent.com/argoproj/argo-workflows/master/api/jsonschema/schema.json"] =
+							"*flow*.{yml,yaml}",
 						},
 					},
 				},
@@ -129,7 +152,6 @@ return {
 					},
 				},
 			}
-			require("neodev").setup()
 			local capabilities = vim.lsp.protocol.make_client_capabilities()
 			capabilities = vim.tbl_extend("force", capabilities, require("cmp_nvim_lsp").default_capabilities())
 			local mason_lspconfig = require("mason-lspconfig")
@@ -216,7 +238,7 @@ return {
 					{ name = "luasnip" },
 					{ name = "path" },
 					{ name = "copilot" },
-					{ name = "cody" },
+					{ name = "lazydev", group_index = 0 },
 				},
 				formatting = {
 					fields = { "abbr", "kind", "menu" },
@@ -231,7 +253,6 @@ return {
 							luasnip = "[LuaSnip]",
 							path = "[Path]",
 							copilot = "[Copilot]",
-							cody = "[Cody]",
 						},
 					}),
 				},
@@ -256,14 +277,6 @@ return {
 						},
 					},
 				}),
-			})
-		end,
-	},
-	{
-		"kosayoda/nvim-lightbulb",
-		config = function()
-			require("nvim-lightbulb").setup({
-				autocmd = { enabled = true },
 			})
 		end,
 	},

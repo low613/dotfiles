@@ -51,6 +51,12 @@ return {
 						["aP"] = "@parameter.outer",
 						["ic"] = { query = "@class.inner", desc = "Select inner part of a class region" },
 						["as"] = { query = "@scope", query_group = "locals", desc = "Select language scope" },
+						["ai"] = "@conditional.outer",
+						["ii"] = "@conditional.inner",
+						["al"] = "@loop.outer",
+						["il"] = "@loop.inner",
+						["ab"] = "@block.outer",
+						["ib"] = "@block.inner",
 					},
 					selection_modes = {
 						["@parameter.outer"] = "v", -- charwise
