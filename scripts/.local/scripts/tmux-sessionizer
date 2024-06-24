@@ -1,5 +1,9 @@
 #!/bin/bash
-selected=$(find ~/ ~/work ~/personal ~/dotfiles/*/.config/ ~/dotfiles/*/.local -mindepth 1 -maxdepth 1 -type d -not -path '/home/eli/.*' | fzf)
+if [[ $# -eq 1 ]]; then
+	selected=$1
+else
+	selected=$(find ~/ ~/work ~/personal ~/dotfiles/*/.config/ ~/dotfiles/*/.local -mindepth 1 -maxdepth 1 -type d -not -path '/home/eli/.*' | fzf)
+fi
 if [[ -z $selected ]]; then
 	exit 0
 fi

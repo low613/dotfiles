@@ -10,7 +10,7 @@ return {
 				puppet = { "puppet-lint" },
 				blade = { "blade-formatter" },
 				sh = { "shfmt" },
-				php = { "phpcbf" },
+				php = { { "pint", "phpcbf" } },
 				go = { "gofmt", "goimports" },
 			},
 			format_on_save = function(bufnr)
@@ -18,7 +18,7 @@ return {
 				if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
 					return
 				end
-				return { timeout_ms = 500, lsp_fallback = "always" }
+				return { timeout_ms = 500, lsp_format = "fallback" }
 			end,
 		})
 		vim.api.nvim_create_user_command("FormatDisable", function()

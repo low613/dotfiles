@@ -55,6 +55,28 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 	group = highlight_group,
 	pattern = "*",
 })
+local blade_group = vim.api.nvim_create_augroup("lsp_blade", { clear = true })
+vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
+	group = blade_group,
+	pattern = "*.blade.php",
+	callback = function()
+		vim.bo.filetype = "php"
+	end,
+})
+
+vim.api.nvim_create_autocmd("LspAttach", {
+	pattern = "*.blade.php",
+	callback = function(args)
+		vim.schedule(function()
+			for _, client in ipairs(vim.lsp.get_active_clients()) do
+				if client.name == "intelephense" and client.attached_buffers[args.buf] then
+					vim.bo.filetype = "blade"
+					vim.bo.syntax = "blade"
+				end
+			end
+		end)
+	end,
+})
 vim.keymap.set("n", "<C-d>", "<C-d>zz")
 vim.keymap.set("n", "<C-u>", "<C-u>zz")
 vim.keymap.set("n", "n", "nzzzv")

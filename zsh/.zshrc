@@ -93,3 +93,4 @@ export PATH=$PATH:$HOME/go/bin
 
 # add Pulumi to the PATH
 export PATH=$PATH:/home/eli/.pulumi/bin
+export PATH=$(composer global config bin-dir --absolute --quiet):$PATH
