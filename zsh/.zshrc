@@ -19,7 +19,6 @@ plugins=(
     kubectl
     helm
     aws
-    zsh-vi-mode
 )
 
 source $ZSH/oh-my-zsh.sh
@@ -38,8 +37,7 @@ alias vpnstatus='sudo wg show'
 alias vnc_pi='ssh -fL 9901:localhost:5901 pi@192.168.1.10 sleep 10; xtigervncviewer localhost:9901'
 eval "$(gh completion -s zsh)"
 alias vim="nvim"
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-
+source <(fzf --zsh)
 export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$HOME/.local/bin:$PATH"
 export VISUAL=nvim
 export EDITOR=$VISUAL

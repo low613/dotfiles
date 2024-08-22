@@ -20,7 +20,7 @@ return {
 				desc = "Symbols (Trouble)",
 			},
 			{
-				"<leader>cl",
+				"<leader>cL",
 				"<cmd>Trouble lsp toggle focus=false win.position=right<cr>",
 				desc = "LSP Definitions / references / ... (Trouble)",
 			},
@@ -86,11 +86,19 @@ return {
 				nmap("<leader>wl", function()
 					print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
 				end, "[W]orkspace [L]ist Folders")
+				nmap("<leader>cl", vim.lsp.codelens.run, "[C]ode [Lens] actions")
 
 				vim.api.nvim_buf_create_user_command(bufnr, "Format", function(_)
 					vim.lsp.buf.format()
 				end, { desc = "Format current buffer with LSP" })
 				vim.lsp.inlay_hint.enable()
+				local lensgrp = vim.api.nvim_create_augroup("lsp_lens", { clear = true })
+				vim.api.nvim_create_autocmd({ "BufEnter", "InsertLeave" }, {
+					group = lensgrp,
+					callback = function()
+						vim.lsp.codelens.refresh()
+					end,
+				})
 			end
 			require("mason").setup()
 			require("mason-lspconfig").setup()
@@ -150,16 +158,34 @@ return {
 				},
 				intelephense = {
 					filetypes = { "php", "blade" },
-					settings = {
-						intelephense = {
-							filetypes = { "php", "blade" },
-							files = {
-								associations = {
-									"*.php",
-									"*.blade.php",
-								},
-								maxsize = 5000000,
+					intelephense = {
+						telemetry = {
+							enabled = false,
+						},
+						codeLens = {
+							references = {
+								enable = true,
 							},
+							implentations = {
+								enable = true,
+							},
+							usages = {
+								enable = true,
+							},
+							overrides = {
+								enable = true,
+							},
+							parent = {
+								enable = true,
+							},
+						},
+						filetypes = { "php", "blade" },
+						files = {
+							associations = {
+								"*.php",
+								"*.blade.php",
+							},
+							maxsize = 5000000,
 						},
 					},
 				},
