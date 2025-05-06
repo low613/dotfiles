@@ -1,3 +1,4 @@
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
@@ -81,7 +82,6 @@ export PATH="$HOME/.rbenv/bin:$PATH"
 export PATH="$PATH:$HOME/.cargo/bin"
 eval "$(rbenv init -)"
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 export PATH=$PATH:$HOME/.local/scripts/
 export FZF_DEFAULT_OPTS=" \
 --color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
@@ -92,3 +92,8 @@ export PATH=$PATH:$HOME/go/bin
 # add Pulumi to the PATH
 export PATH=$PATH:/home/eli/.pulumi/bin
 export PATH=$(composer global config bin-dir --absolute --quiet):$PATH
+export PODMAN_COMPOSE_PROVIDER=podman-compose
+export PODMAN_COMPOSE_WARNING_LOGS=false
+export PATH="/home/eli/.config/herd-lite/bin:$PATH"
+export PHP_INI_SCAN_DIR="/home/eli/.config/herd-lite/bin:$PHP_INI_SCAN_DIR"
+alias sail='sh $([ -f sail ] && echo sail || echo vendor/bin/sail)'

@@ -14,7 +14,8 @@ set $down j
 set $up k
 set $right l
 # Your preferred terminal emulator
-set $term wezterm start --always-new-process
+set $term ghostty
+# set $term wezterm start --always-new-process
 # Your preferred application launcher
 # Note: pass the final command to swaymsg so that the resulting window can be opened
 # on the original workspace that the command was run on.
@@ -224,7 +225,6 @@ bar {
 # startup Execs
 exec dex -a -e sway
 exec_always autotiling
-exec_always sworkstyle
 #volume
 bindsym XF86AudioRaiseVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ +10% && $refresh_i3status
 bindsym XF86AudioLowerVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ -10% && $refresh_i3status
@@ -258,5 +258,5 @@ exec /usr/lib/x86_64-linux-gnu/libexec/polkit-kde-authentication-agent-1
 exec_always pkill kanshi && kanshi
 # Toggle control center
 bindsym $mod+Shift+n exec swaync-client -t -sw
-include /etc/sway/config.d/*
 exec dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP=sway`
+include /etc/sway/config.d/*

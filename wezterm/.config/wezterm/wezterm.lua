@@ -36,9 +36,9 @@ config.keys = {
 		key = "i",
 		mods = "CTRL|SHIFT",
 		action = act.SwitchToWorkspace({
-			name = "/home/eli/work/instance-registry",
+			name = "/home/eli/work/instance-registry-new",
 			spawn = {
-				cwd = "/home/eli/work/instance-registry",
+				cwd = "/home/eli/work/instance-registry-new",
 			},
 		}),
 	},
@@ -55,5 +55,4 @@ config.keys = {
 	{ key = "l", mods = "ALT", action = wezterm.action.ShowLauncherArgs({ flags = "FUZZY|TABS|WORKSPACES" }) },
 }
 config.term = "wezterm"
-config.front_end = "Software"
 return config

@@ -55,7 +55,7 @@ floating_modifier $mod
 tiling_drag modifier titlebar
 
 # start a terminal
-bindsym $mod+Return exec alacritty -e tmux
+bindsym $mod+Return exec kitty tmux
 
 # kill focused window
 bindsym $mod+Shift+q kill
@@ -70,6 +70,7 @@ bindsym $mod+Tab exec --no-startup-id "rofi -show window"
 # .desktop file. It is a wrapper around dmenu, so you need that installed.
 # bindcode $mod+40 exec --no-startup-id i3-dmenu-desktop
 bindsym Print exec maim -s -u | tee ~/Pictures/Screenshots/$(date +%Y-%b-%d--%H-%M-%S_maim | tr A-Z a-z).png | xclip -selection clipboard -t image/png
+bindsym $mod+Shift+a exec autorandr -c mobile && autorandr -c --force
 # change focus
 bindsym $mod+h focus left
 bindsym $mod+j focus down
@@ -237,3 +238,7 @@ client.unfocused         $overlay0 $base  $text    $rosewater $overlay0
 client.urgent            $peach    $base  $peach   $overlay0  $peach
 client.placeholder       $overlay0 $base  $text    $overlay0  $overlay0
 client.background        $base
+mode passthrough {
+	bindsym $mod+Pause mode default
+}
+bindsym $mod+Pause mode passthrough

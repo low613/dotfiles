@@ -162,23 +162,6 @@ return {
 						telemetry = {
 							enabled = false,
 						},
-						codeLens = {
-							references = {
-								enable = true,
-							},
-							implentations = {
-								enable = true,
-							},
-							usages = {
-								enable = true,
-							},
-							overrides = {
-								enable = true,
-							},
-							parent = {
-								enable = true,
-							},
-						},
 						filetypes = { "php", "blade" },
 						files = {
 							associations = {
