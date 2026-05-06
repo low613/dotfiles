@@ -33,27 +33,27 @@ trap cleanup EXIT
 
 while (($#)); do
   case "$1" in
-    --noconfirm)
-      noconfirm=(--noconfirm)
-      ;;
-    --skip-packages)
-      skip_packages=true
-      ;;
-    --skip-services)
-      skip_services=true
-      ;;
-    --stow)
-      stow_dotfiles=true
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      usage >&2
-      exit 2
-      ;;
+  --noconfirm)
+    noconfirm=(--noconfirm)
+    ;;
+  --skip-packages)
+    skip_packages=true
+    ;;
+  --skip-services)
+    skip_services=true
+    ;;
+  --stow)
+    stow_dotfiles=true
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "Unknown option: $1" >&2
+    usage >&2
+    exit 2
+    ;;
   esac
   shift
 done
@@ -242,9 +242,9 @@ create_dotfiles_backup_dir() {
 
 is_shared_stow_container() {
   case "$1" in
-    .config|.local)
-      return 0
-      ;;
+  .config | .local)
+    return 0
+    ;;
   esac
 
   return 1
@@ -301,9 +301,9 @@ restow_dotfiles() {
 
   while IFS= read -r -d '' dir; do
     case "$dir" in
-      .git|packages|systemd)
-        continue
-        ;;
+    .git | packages | systemd)
+      continue
+      ;;
     esac
     package_dirs+=("$dir")
   done < <(find "$repo_root" -mindepth 1 -maxdepth 1 -type d -printf '%f\0' | sort -z)
@@ -318,6 +318,7 @@ restow_dotfiles() {
     cd "$repo_root"
     stow --target="$HOME" --restow "${package_dirs[@]}"
   )
+  tide configure --auto --style=Lean --prompt_colors='16 colors' --show_time=No --lean_prompt_height='Two lines' --prompt_connection=Dotted --prompt_spacing=Compact --icons='Few icons' --transient=Yes
 }
 
 require_arch_user
