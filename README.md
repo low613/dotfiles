@@ -43,9 +43,9 @@ The setup script:
 `systemd`. User systemd units are linked separately so
 `~/.config/systemd/user` remains a real directory for `systemctl --user` state
 such as `*.target.wants` directories. Before restowing, existing package-owned
-target directories such as `~/.config/nvim` are moved into
-`~/.dotfiles.bak/<timestamp>` so Stow can replace them with symlinks. Existing
-target files are still left for Stow to report as conflicts.
+target directories such as `~/.config/nvim`, plus package-owned direct files
+such as `~/.config/starship.toml`, are moved into `~/.dotfiles.bak/<timestamp>`
+so Stow can replace them with symlinks.
 
 ## Niri Local Config
 

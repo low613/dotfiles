@@ -250,7 +250,7 @@ is_shared_stow_container() {
   return 1
 }
 
-package_target_dirs() {
+package_backup_targets() {
   local package="$1"
   local rel
 
@@ -261,9 +261,25 @@ package_target_dirs() {
 
     printf '%s\0' "$rel"
   done < <(find "$repo_root/$package" -mindepth 1 -maxdepth 2 -type d -printf '%P\0' | sort -z)
+
+  while IFS= read -r -d '' rel; do
+    case "$(dirname -- "$rel")" in
+      .|.config|.local)
+        ;;
+      *)
+        continue
+        ;;
+    esac
+
+    if is_shared_stow_container "$rel"; then
+      continue
+    fi
+
+    printf '%s\0' "$rel"
+  done < <(find "$repo_root/$package" -mindepth 1 -maxdepth 2 \( -type f -o -type l \) -printf '%P\0' | sort -z)
 }
 
-backup_existing_stow_dirs() {
+backup_existing_stow_targets() {
   local backup_dir=""
   local backup_target
   local package
@@ -274,7 +290,7 @@ backup_existing_stow_dirs() {
     while IFS= read -r -d '' rel; do
       target="$HOME/$rel"
 
-      if [[ ! -d "$target" || -L "$target" ]]; then
+      if [[ ! -e "$target" || -L "$target" ]]; then
         continue
       fi
 
@@ -285,8 +301,8 @@ backup_existing_stow_dirs() {
       backup_target="$backup_dir/$rel"
       mkdir -p -- "$(dirname -- "$backup_target")"
       mv -- "$target" "$backup_target"
-      echo "Backed up existing directory before Stow: $target -> $backup_target"
-    done < <(package_target_dirs "$package")
+      echo "Backed up existing target before Stow: $target -> $backup_target"
+    done < <(package_backup_targets "$package")
   done
 }
 
@@ -312,7 +328,7 @@ restow_dotfiles() {
     return 0
   fi
 
-  backup_existing_stow_dirs "${package_dirs[@]}"
+  backup_existing_stow_targets "${package_dirs[@]}"
 
   (
     cd "$repo_root"
