@@ -134,6 +134,8 @@ show_local_package_notes() {
 
 install_repo_user_units() {
   local source_dir="$repo_root/systemd/.config/systemd/user"
+  local systemd_source_dir="$repo_root/systemd/.config/systemd"
+  local systemd_target_dir="$HOME/.config/systemd"
   local target_dir="$HOME/.config/systemd/user"
   local unit
 
@@ -141,10 +143,38 @@ install_repo_user_units() {
     return 0
   fi
 
+  unfold_repo_owned_symlink_dir "$systemd_target_dir" "$systemd_source_dir"
+  mkdir -p -- "$systemd_target_dir"
+  unfold_repo_owned_symlink_dir "$target_dir" "$source_dir"
   mkdir -p -- "$target_dir"
   while IFS= read -r -d '' unit; do
     ln -sfn -- "$unit" "$target_dir/$(basename "$unit")"
   done < <(find "$source_dir" -maxdepth 1 -type f -name '*.service' -print0)
+}
+
+unfold_repo_owned_symlink_dir() {
+  local target_dir="$1"
+  local source_dir="$2"
+  local source_real
+  local target_real
+
+  if [[ ! -L "$target_dir" ]]; then
+    return 0
+  fi
+
+  if ! target_real="$(readlink -f -- "$target_dir")"; then
+    echo "Refusing to replace broken symlink: $target_dir" >&2
+    exit 1
+  fi
+
+  source_real="$(readlink -f -- "$source_dir")"
+  if [[ "$target_real" != "$source_real" ]]; then
+    echo "Refusing to replace non-repo systemd symlink: $target_dir -> $(readlink -- "$target_dir")" >&2
+    exit 1
+  fi
+
+  rm -- "$target_dir"
+  echo "Converted Stow-folded systemd directory to a real directory: $target_dir"
 }
 
 disable_user_services() {
@@ -194,6 +224,72 @@ ensure_niri_local_config() {
   echo "Created ignored Niri local config: $local_config"
 }
 
+create_dotfiles_backup_dir() {
+  local backup_dir
+  local suffix=0
+  local timestamp
+
+  timestamp="$(date +%Y%m%dT%H%M%S)"
+  backup_dir="$HOME/.dotfiles.bak/$timestamp"
+  while [[ -e "$backup_dir" ]]; do
+    suffix=$((suffix + 1))
+    backup_dir="$HOME/.dotfiles.bak/${timestamp}-$suffix"
+  done
+
+  mkdir -p -- "$backup_dir"
+  printf '%s\n' "$backup_dir"
+}
+
+is_shared_stow_container() {
+  case "$1" in
+    .config|.local)
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+package_target_dirs() {
+  local package="$1"
+  local rel
+
+  while IFS= read -r -d '' rel; do
+    if is_shared_stow_container "$rel"; then
+      continue
+    fi
+
+    printf '%s\0' "$rel"
+  done < <(find "$repo_root/$package" -mindepth 1 -maxdepth 2 -type d -printf '%P\0' | sort -z)
+}
+
+backup_existing_stow_dirs() {
+  local backup_dir=""
+  local backup_target
+  local package
+  local rel
+  local target
+
+  for package in "$@"; do
+    while IFS= read -r -d '' rel; do
+      target="$HOME/$rel"
+
+      if [[ ! -d "$target" || -L "$target" ]]; then
+        continue
+      fi
+
+      if [[ -z "$backup_dir" ]]; then
+        backup_dir="$(create_dotfiles_backup_dir)"
+      fi
+
+      backup_target="$backup_dir/$rel"
+      mkdir -p -- "$(dirname -- "$backup_target")"
+      mv -- "$target" "$backup_target"
+      echo "Backed up existing directory before Stow: $target -> $backup_target"
+    done < <(package_target_dirs "$package")
+  done
+}
+
 restow_dotfiles() {
   local package_dirs=()
   local dir
@@ -205,7 +301,7 @@ restow_dotfiles() {
 
   while IFS= read -r -d '' dir; do
     case "$dir" in
-      .git|packages)
+      .git|packages|systemd)
         continue
         ;;
     esac
@@ -215,6 +311,8 @@ restow_dotfiles() {
   if ((${#package_dirs[@]} == 0)); then
     return 0
   fi
+
+  backup_existing_stow_dirs "${package_dirs[@]}"
 
   (
     cd "$repo_root"
