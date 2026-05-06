@@ -1,0 +1,6 @@
+font-family = "Fira Code"
+theme = "Catppuccin Mocha"
+cursor-style = "block"
+gtk-titlebar = "false"
+keybind = shift+enter=text:\n
+command = /usr/bin/fish --login --interactive

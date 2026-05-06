@@ -1,15 +1,15 @@
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
+#if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+#  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+#fi
+#[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 setopt COMBINING_CHARS
 
 export ZSH="/home/eli/.oh-my-zsh"
 #ZSH_THEME="agnoster"
-ZSH_THEME="powerlevel10k/powerlevel10k"
+#ZSH_THEME="powerlevel10k/powerlevel10k"
 plugins=(
     git
     zsh-autosuggestions
@@ -97,3 +97,14 @@ export PODMAN_COMPOSE_WARNING_LOGS=false
 export PATH="/home/eli/.config/herd-lite/bin:$PATH"
 export PHP_INI_SCAN_DIR="/home/eli/.config/herd-lite/bin:$PHP_INI_SCAN_DIR"
 alias sail='sh $([ -f sail ] && echo sail || echo vendor/bin/sail)'
+
+
+# bun completions
+[ -s "/home/eli/.bun/_bun" ] && source "/home/eli/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+export MANPAGER="sh -c 'awk '\''{ gsub(/\x1B\[[0-9;]*m/, \"\", \$0); gsub(/.\x08/, \"\", \$0); print }'\'' | bat -p -lman'"
+eval "$(starship init zsh)"
+eval "$(zoxide init zsh)"

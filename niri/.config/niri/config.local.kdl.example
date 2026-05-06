@@ -1,0 +1,7 @@
+// Device-specific Niri settings go here.
+// This file is a template. Copy it to config.local.kdl and keep that file untracked.
+//
+// Example:
+// output "eDP-1" {
+//     focus-at-startup
+// }
