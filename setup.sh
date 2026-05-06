@@ -177,6 +177,39 @@ unfold_repo_owned_symlink_dir() {
   echo "Converted Stow-folded systemd directory to a real directory: $target_dir"
 }
 
+ensure_shared_stow_container_dirs() {
+  local rel
+  local target_dir
+  local target_real
+
+  while IFS= read -r rel; do
+    target_dir="$HOME/$rel"
+
+    if [[ -L "$target_dir" ]]; then
+      if ! target_real="$(readlink -f -- "$target_dir")"; then
+        echo "Refusing to replace broken symlink: $target_dir" >&2
+        exit 1
+      fi
+
+      case "$target_real" in
+      "$repo_root"/*/"$rel")
+        rm -- "$target_dir"
+        echo "Converted Stow-folded shared directory to a real directory: $target_dir"
+        ;;
+      *)
+        echo "Refusing to replace non-repo shared symlink: $target_dir -> $(readlink -- "$target_dir")" >&2
+        exit 1
+        ;;
+      esac
+    fi
+
+    mkdir -p -- "$target_dir"
+  done <<'EOF'
+.config
+.local
+EOF
+}
+
 disable_user_services() {
   local services=()
   local service
@@ -313,12 +346,13 @@ restow_dotfiles() {
   fi
 
   backup_existing_stow_dirs "${package_dirs[@]}"
+  ensure_shared_stow_container_dirs
 
   (
     cd "$repo_root"
     stow --target="$HOME" --restow "${package_dirs[@]}"
   )
-  tide configure --auto --style=Lean --prompt_colors='16 colors' --show_time=No --lean_prompt_height='Two lines' --prompt_connection=Dotted --prompt_spacing=Compact --icons='Few icons' --transient=Yes
+  fish -c "tide configure --auto --style=Lean --prompt_colors='16 colors' --show_time=No --lean_prompt_height='Two lines' --prompt_connection=Dotted --prompt_spacing=Compact --icons='Few icons' --transient=Yes"
 }
 
 require_arch_user

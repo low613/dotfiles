@@ -42,8 +42,11 @@ The setup script:
 `--stow` restows every top-level package into `$HOME`, except `packages` and
 `systemd`. User systemd units are linked separately so
 `~/.config/systemd/user` remains a real directory for `systemctl --user` state
-such as `*.target.wants` directories. Before restowing, existing package-owned
-target directories such as `~/.config/nvim` are moved into
+such as `*.target.wants` directories. Shared containers such as `~/.config` and
+`~/.local` are also kept as real directories so applications can write local
+state like `~/.local/share` and `~/.local/state` outside the repo. Before
+restowing, existing package-owned target directories such as `~/.config/nvim`
+are moved into
 `~/.dotfiles.bak/<timestamp>` so Stow can replace them with symlinks. Existing
 target files are still left for Stow to report as conflicts.
 
@@ -64,6 +67,9 @@ Use `niri/.config/niri/config.local.kdl.example` as the template.
 Fish config, completions, functions, themes, and the `fish_plugins` manifest are
 tracked. `fish_variables*` is intentionally ignored because Fish universal
 variables are machine-local state.
+
+The setup script runs `tide configure` through Fish after restowing so Tide is
+configured in the shell that provides the function.
 
 ## User Services
 
