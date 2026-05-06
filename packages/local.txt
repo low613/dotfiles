@@ -1,2 +1,1 @@
 # Packages installed locally or from private/non-AUR sources.
-fleet-osquery
