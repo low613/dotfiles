@@ -39,9 +39,13 @@ The setup script:
 - enables and starts units from `packages/user-services.txt` when the user graphical session is active;
 - creates an ignored Niri local config from the example if one does not exist.
 
-`--stow` restows every top-level package into `$HOME`, except `packages`.
-On a machine with existing non-symlinked config files, review or move those
-files first so Stow does not conflict with them.
+`--stow` restows every top-level package into `$HOME`, except `packages` and
+`systemd`. User systemd units are linked separately so
+`~/.config/systemd/user` remains a real directory for `systemctl --user` state
+such as `*.target.wants` directories. Before restowing, existing package-owned
+target directories such as `~/.config/nvim` are moved into
+`~/.dotfiles.bak/<timestamp>` so Stow can replace them with symlinks. Existing
+target files are still left for Stow to report as conflicts.
 
 ## Niri Local Config
 
