@@ -1,0 +1,10 @@
+# Session helpers and user daemons expected to be managed by systemd.
+hypridle.service
+hyprpolkitagent.service
+kanshi.service
+pipewire-pulse.service
+pipewire.service
+swaync.service
+swayosd-server.service
+waybar.service
+wireplumber.service
