@@ -4,12 +4,10 @@ brave-bin
 brave-origin-beta-bin
 bruno-bin
 chromium-widevine
-cloudflare-warp-bin
 etcher-bin
 google-chrome
 onlyoffice-bin
 ventoy-bin
 visual-studio-code-bin
-wleave
 yay-bin
 zen-browser-bin
