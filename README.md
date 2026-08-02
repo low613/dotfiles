@@ -6,7 +6,7 @@ package whose contents map directly into `$HOME`.
 ## Layout
 
 - `zsh`, `fish`, `tmux`, `nvim`, `ghostty`, `kitty`, `alacritty`, `wezterm`, and `zellij` manage shell, editor, terminal, and multiplexer config.
-- `niri`, `waybar`, `kanshi`, `fuzzel`, `hyprlock`, `swayosd`, `sway`, `i3`, `picom`, `polybar`, `rofi`, `sworkstyle`, and `workstyle` manage desktop/session config.
+- `niri`, `waybar`, `kanshi`, `fuzzel`, `swayidle`, `swaylock`, `swayosd`, `sway`, `i3`, `picom`, `polybar`, `rofi`, `sworkstyle`, and `workstyle` manage desktop/session config.
 - `systemd` contains user services that are not shipped by their packages.
 - `scripts` installs helper scripts under `~/.local/scripts`.
 - `packages` contains package and user-service manifests consumed by `setup.sh`.
@@ -74,8 +74,8 @@ configured in the shell that provides the function.
 ## User Services
 
 The intended user-managed desktop services are listed in
-`packages/user-services.txt`. This includes `waybar`, `kanshi`, `swayosd-server`,
-`swaync`, audio services, and session helpers.
+`packages/user-services.txt`. This includes `waybar`, `kanshi`, `swayidle`,
+`swayosd-server`, `swaync`, audio services, and session helpers.
 
 `mako.service` is disabled because `swaync.service` owns notifications. Stale
 local units such as `elephant.service` are also disabled by setup.

@@ -108,3 +108,5 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 export MANPAGER="sh -c 'awk '\''{ gsub(/\x1B\[[0-9;]*m/, \"\", \$0); gsub(/.\x08/, \"\", \$0); print }'\'' | bat -p -lman'"
 eval "$(starship init zsh)"
 eval "$(zoxide init zsh)"
+
+complete -o nospace -C /home/eli/.local/bin/hcp hcp

@@ -305,7 +305,7 @@ window-rule {
 }
 // Always open Slack fullscreen.
 window-rule {
-    match app-id="Slack"
+    match app-id="slack"
     default-column-width { proportion 1.0; }
     block-out-from "screen-capture"
 }
@@ -348,7 +348,7 @@ binds {
     Mod+return hotkey-overlay-title="Open a Terminal: ghostty" { spawn "ghostty"; }
     Mod+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
     Super+Escape hotkey-overlay-title="Lock the Screen: hyprlock" { spawn "hyprlock"; }
-    Mod+B {spawn "zen-browser"; }
+    Mod+B {spawn "helium-browser"; }
     Mod+A {spawn-sh "google-chrome-stable --app=\"https://chatgpt.com\"";}
 
     // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.

@@ -1,5 +1,5 @@
 # Session helpers and user daemons expected to be managed by systemd.
-hypridle.service
+swayidle.service
 hyprpolkitagent.service
 kanshi.service
 pipewire-pulse.service

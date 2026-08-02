@@ -136,7 +136,7 @@
     }
   },
   "tray": {
-    "icon-size": 12,
+    "icon-size": 16,
     "spacing": 17
   },
   "power-profiles-daemon": {

@@ -46,7 +46,6 @@ grim
 gst-plugin-pipewire
 helm
 htop
-hypridle
 hyprlock
 hyprpolkitagent
 imagemagick
