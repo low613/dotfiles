@@ -1,0 +1,218 @@
+#!/usr/bin/env bash
+
+set -uo pipefail
+
+readonly icon="󰚩"
+readonly cache_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/waybar"
+readonly cache_file="${cache_dir}/codex-rate-limits.json"
+
+app_pid=""
+app_in=""
+app_out=""
+
+cleanup() {
+  if [[ -n "${app_in}" ]]; then
+    exec {app_in}>&-
+  fi
+
+  if [[ -n "${app_out}" ]]; then
+    exec {app_out}<&-
+  fi
+
+  if [[ -n "${app_pid}" ]]; then
+    if kill -0 "${app_pid}" 2>/dev/null; then
+      kill "${app_pid}" 2>/dev/null || true
+    fi
+    wait "${app_pid}" 2>/dev/null || true
+  fi
+}
+
+trap cleanup EXIT
+
+emit_unavailable() {
+  jq -cn \
+    --arg text "${icon} ?" \
+    --arg tooltip $'Codex usage unavailable\nCheck that Codex is installed and signed in.' \
+    '{text: $text, tooltip: $tooltip, class: "unavailable"}'
+}
+
+find_codex() {
+  if [[ -n "${CODEX_BIN:-}" ]] && [[ -x "${CODEX_BIN}" ]]; then
+    printf '%s\n' "${CODEX_BIN}"
+    return 0
+  fi
+
+  if command -v codex >/dev/null 2>&1; then
+    command -v codex
+    return 0
+  fi
+
+  if [[ -x "${HOME}/.local/bin/codex" ]]; then
+    printf '%s\n' "${HOME}/.local/bin/codex"
+    return 0
+  fi
+
+  return 1
+}
+
+fetch_rate_limits() {
+  local codex_bin line remaining_seconds response
+  local deadline
+
+  codex_bin="$(find_codex)" || return 1
+
+  coproc CODEX_APP { "${codex_bin}" app-server --listen stdio:// 2>/dev/null; }
+  app_pid="${CODEX_APP_PID}"
+  exec {app_in}>&"${CODEX_APP[1]}"
+  exec {app_out}<&"${CODEX_APP[0]}"
+
+  printf '%s\n' \
+    '{"method":"initialize","id":0,"params":{"clientInfo":{"name":"waybar_codex_usage","title":"Waybar Codex Usage","version":"1.0.0"}}}' \
+    '{"method":"initialized","params":{}}' \
+    '{"method":"account/rateLimits/read","id":1}' \
+    >&"${app_in}"
+
+  deadline=$((SECONDS + 15))
+  response=""
+
+  while ((SECONDS < deadline)); do
+    remaining_seconds=$((deadline - SECONDS))
+    IFS= read -r -t "${remaining_seconds}" -u "${app_out}" line || break
+
+    if jq -e '.id == 1 and .result != null' >/dev/null 2>&1 <<<"${line}"; then
+      response="${line}"
+      break
+    fi
+
+    if jq -e '.id == 1 and .error != null' >/dev/null 2>&1 <<<"${line}"; then
+      break
+    fi
+  done
+
+  cleanup
+  app_pid=""
+  app_in=""
+  app_out=""
+
+  [[ -n "${response}" ]] || return 1
+
+  jq -ce '
+    .result.rateLimitsByLimitId.codex // .result.rateLimits
+    | select(.primary != null or .secondary != null)
+  ' <<<"${response}"
+}
+
+save_cache() {
+  local limits="$1"
+  local temporary_file
+
+  mkdir -p "${cache_dir}" || return 0
+  temporary_file="$(mktemp "${cache_file}.XXXXXX")" || return 0
+
+  if jq -cn \
+    --argjson fetched_at "$(date +%s)" \
+    --argjson rate_limits "${limits}" \
+    '{fetched_at: $fetched_at, rate_limits: $rate_limits}' \
+    >"${temporary_file}"; then
+    chmod 600 "${temporary_file}"
+    mv "${temporary_file}" "${cache_file}"
+  else
+    rm -f "${temporary_file}"
+  fi
+}
+
+load_cache() {
+  [[ -r "${cache_file}" ]] || return 1
+  jq -ce '
+    select(
+      (.fetched_at | type) == "number"
+      and (.rate_limits.primary != null or .rate_limits.secondary != null)
+    )
+  ' "${cache_file}"
+}
+
+format_window() {
+  local minutes="$1"
+
+  if ((minutes >= 1440 && minutes % 1440 == 0)); then
+    printf '%d-day' "$((minutes / 1440))"
+  elif ((minutes >= 60 && minutes % 60 == 0)); then
+    printf '%d-hour' "$((minutes / 60))"
+  else
+    printf '%d-minute' "${minutes}"
+  fi
+}
+
+render() {
+  local limits="$1"
+  local fetched_at="$2"
+  local stale="$3"
+  local class min_remaining reset_at reset_text tooltip updated_text
+  local used remaining window_minutes window_text
+
+  min_remaining="$(jq -r '
+    [.primary, .secondary]
+    | map(select(. != null) | (100 - .usedPercent))
+    | min
+    | round
+  ' <<<"${limits}")"
+
+  if ((min_remaining <= 10)); then
+    class="critical"
+  elif ((min_remaining <= 25)); then
+    class="warning"
+  else
+    class="normal"
+  fi
+
+  if [[ "${stale}" == "true" ]]; then
+    class="stale"
+    tooltip="Codex usage (cached; live refresh failed)"
+  else
+    tooltip="Codex usage"
+  fi
+
+  while IFS=$'\t' read -r used remaining window_minutes reset_at; do
+    window_text="$(format_window "${window_minutes}")"
+    reset_text="$(date --date="@${reset_at}" '+%a %d %b %H:%M' 2>/dev/null || printf 'unknown')"
+    tooltip+=$'\n'"${window_text} window: ${used}% used (${remaining}% left)"
+    tooltip+=$'\n'"Resets ${reset_text}"
+  done < <(
+    jq -r '
+      [.primary, .secondary]
+      | map(select(. != null))
+      | .[]
+      | [(.usedPercent | round), (100 - .usedPercent | round), .windowDurationMins, .resetsAt]
+      | @tsv
+    ' <<<"${limits}"
+  )
+
+  updated_text="$(date --date="@${fetched_at}" '+%a %d %b %H:%M' 2>/dev/null || printf 'unknown')"
+  tooltip+=$'\n'"Updated ${updated_text}"
+
+  jq -cn \
+    --arg text "${icon} ${min_remaining}%" \
+    --arg tooltip "${tooltip}" \
+    --arg class "${class}" \
+    --argjson percentage "${min_remaining}" \
+    '{text: $text, tooltip: $tooltip, class: $class, percentage: $percentage}'
+}
+
+rate_limits=""
+fetched_at=""
+stale="false"
+
+if rate_limits="$(fetch_rate_limits)"; then
+  fetched_at="$(date +%s)"
+  save_cache "${rate_limits}"
+else
+  cached="$(load_cache)" || {
+    emit_unavailable
+    exit 0
+  }
+  rate_limits="$(jq -c '.rate_limits' <<<"${cached}")"
+  fetched_at="$(jq -r '.fetched_at' <<<"${cached}")"
+  stale="true"
+fi
+
+render "${rate_limits}" "${fetched_at}" "${stale}"

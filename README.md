@@ -80,6 +80,13 @@ The intended user-managed desktop services are listed in
 `mako.service` is disabled because `swaync.service` owns notifications. Stale
 local units such as `elephant.service` are also disabled by setup.
 
+## Waybar Codex Usage
+
+The Waybar Codex module shows the percentage of the most constrained usage
+window that remains. Its tooltip lists each available window and reset time.
+It refreshes through the signed-in Codex CLI every five minutes and falls back
+to a clearly marked cached value if a live refresh fails.
+
 ## Validation
 
 Common checks after edits:
@@ -89,6 +96,7 @@ bash -n setup.sh
 shellcheck setup.sh
 niri validate --config niri/.config/niri/config.kdl
 jq . waybar/.config/waybar/config.jsonc >/dev/null
+shellcheck waybar/.config/waybar/scripts/codex-usage
 ghostty +validate-config --config-file=ghostty/.config/ghostty/config
 systemd-analyze --user verify systemd/.config/systemd/user/*.service
 ```
