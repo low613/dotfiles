@@ -17,6 +17,7 @@
     "network",
     "pulseaudio",
     "cpu",
+    "custom/codex-usage",
     "power-profiles-daemon",
     "battery"
   ],
@@ -48,6 +49,12 @@
     "interval": 5,
     "format": "󰍛",
     "on-click": "ghostty -e btop"
+  },
+  "custom/codex-usage": {
+    "exec": "$HOME/.config/waybar/scripts/codex-usage",
+    "return-type": "json",
+    "interval": 300,
+    "tooltip": true
   },
   "clock": {
     "interval": 1,

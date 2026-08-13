@@ -35,11 +35,26 @@
 #pulseaudio,
 #custom-omarchy,
 #custom-screenrecording-indicator,
-#idle_inhibitor
+#custom-codex-usage,
+#idle_inhibitor,
 #custom-update {
   min-width: 12px;
   margin: 0 7.5px;
 }
+
+#custom-codex-usage.warning {
+  color: #f9e2af;
+}
+
+#custom-codex-usage.critical {
+  color: #f38ba8;
+}
+
+#custom-codex-usage.stale,
+#custom-codex-usage.unavailable {
+  color: #6c7086;
+}
+
 #battery.critical:not(.charging) {
     background-color: #f53c3c;
     color: #ffffff;
