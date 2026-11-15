@@ -1,2 +1,4 @@
 niri/.config/niri/config.local.kdl
 fish/.config/fish/fish_variables*
+agents/local/
+.vagrant/

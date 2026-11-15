@@ -1,0 +1,184 @@
+- name: Load Ubuntu package lists
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/packages/ubuntu.yml"
+
+- name: Create the download directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ packages_download_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Drop skipped repositories
+  ansible.builtin.set_fact:
+    packages_ubuntu_repos: "{{ ubuntu_apt_repositories | rejectattr('name', 'in', packages_skip) }}"
+
+- name: Install apt prerequisites
+  become: true
+  ansible.builtin.apt:
+    name: [ca-certificates, curl, gpg, unzip, xz-utils, git]
+    state: present
+    # Always refresh: vendor repos may have been added since the last update.
+    update_cache: true
+
+- name: Stop vendor packages from writing their own apt sources
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ item.defaults_file.path }}"
+    content: "{{ item.defaults_file.content }}\n"
+    mode: "0644"
+  loop: "{{ packages_ubuntu_repos | selectattr('defaults_file', 'defined') }}"
+  loop_control:
+    label: "{{ item.defaults_file.path }}"
+
+- name: Remove apt sources that vendor packages created themselves
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ packages_ubuntu_repos | selectattr('replaces_files', 'defined') | map(attribute='replaces_files') | flatten }}"
+
+- name: Add vendor apt repositories
+  become: true
+  ansible.builtin.deb822_repository:
+    name: "{{ item.name }}"
+    types: [deb]
+    uris: "{{ item.uris }}"
+    suites: "{{ item.suites }}"
+    components: "{{ item.components | default(omit) }}"
+    architectures: "{{ item.architectures | default(omit) }}"
+    signed_by: "{{ item.key_url }}"
+  loop: "{{ packages_ubuntu_repos }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Pin vendor repositories that must win over Ubuntu's packages
+  become: true
+  ansible.builtin.copy:
+    dest: "/etc/apt/preferences.d/{{ item.name }}"
+    content: |
+      Package: {{ item.pin.packages | default('*') }}
+      Pin: origin {{ item.pin.origin }}
+      Pin-Priority: {{ item.pin.priority }}
+    mode: "0644"
+  loop: "{{ packages_ubuntu_repos | selectattr('pin', 'defined') }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Answer package install prompts
+  become: true
+  ansible.builtin.debconf:
+    name: "{{ item.name }}"
+    question: "{{ item.question }}"
+    value: "{{ item.value }}"
+    vtype: "{{ item.vtype }}"
+  loop: >-
+    {{ ubuntu_debconf + [{'name': ubuntu_display_manager,
+                          'question': 'shared/default-x-display-manager',
+                          'value': ubuntu_display_manager, 'vtype': 'select'}] }}
+  loop_control:
+    label: "{{ item.question }}"
+
+- name: Install apt packages
+  become: true
+  ansible.builtin.apt:
+    name: >-
+      {{ ubuntu_apt_packages
+         + [ubuntu_display_manager]
+         + (packages_ubuntu_repos | map(attribute='packages') | flatten) }}
+    state: present
+    # Always refresh: vendor repos may have been added since the last update.
+    update_cache: true
+
+- name: List installed packages
+  ansible.builtin.package_facts:
+
+- name: Install standalone .deb packages
+  ansible.builtin.include_tasks: ubuntu_deb.yml
+  loop: "{{ ubuntu_debs | rejectattr('name', 'in', packages_skip) }}"
+  loop_control:
+    loop_var: deb
+    label: "{{ deb.name }}"
+  vars:
+    packages_deb_installed: "{{ ansible_facts.packages[deb.package | default(deb.name)] | default([]) }}"
+  # Only when missing or outdated (apt would re-download a URL deb every run).
+  when: >-
+    packages_deb_installed | length == 0
+    or (deb.version is defined and packages_deb_installed[0].version != deb.version)
+
+- name: Check which renamed commands are installed
+  ansible.builtin.stat:
+    path: "{{ item.target }}"
+  loop: "{{ ubuntu_command_aliases }}"
+  loop_control:
+    label: "{{ item.target }}"
+  register: packages_alias_targets
+
+- name: Link renamed commands to their usual names
+  become: true
+  ansible.builtin.file:
+    src: "{{ item.target }}"
+    dest: "/usr/local/bin/{{ item.name }}"
+    state: link
+  # Skip aliases whose package was left out (packages_skip).
+  loop: "{{ packages_alias_targets.results | selectattr('stat.exists') | map(attribute='item') }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Install release binaries
+  ansible.builtin.include_tasks: ubuntu_release_binary.yml
+  loop: "{{ ubuntu_release_binaries | rejectattr('name', 'in', packages_skip) }}"
+  loop_control:
+    loop_var: tool
+    label: "{{ tool.name }} {{ tool.version }}"
+
+- name: Install build dependencies for source builds
+  become: true
+  ansible.builtin.apt:
+    name: "{{ ['cargo', 'rustc', 'clang', 'pkg-config'] + (ubuntu_source_builds | map(attribute='build_deps') | flatten) }}"
+    state: present
+
+- name: Build tools from source
+  ansible.builtin.include_tasks: ubuntu_source_build.yml
+  loop: "{{ ubuntu_source_builds | rejectattr('name', 'in', packages_skip) }}"
+  loop_control:
+    loop_var: tool
+    label: "{{ tool.name }} {{ tool.version }}"
+
+- name: Install fonts
+  ansible.builtin.include_tasks: ubuntu_archive.yml
+  loop: "{{ ubuntu_fonts }}"
+  loop_control:
+    loop_var: archive
+    label: "{{ archive.name }} {{ archive.version }}"
+  vars:
+    packages_archive_dest: "/usr/local/share/fonts/{{ archive.name }}"
+    packages_archive_marker: "/usr/local/share/fonts/{{ archive.name }}/.version-{{ archive.version }}"
+    packages_archive_notify: Refresh font cache
+
+- name: Install GTK themes
+  ansible.builtin.include_tasks: ubuntu_archive.yml
+  loop: "{{ ubuntu_gtk_themes }}"
+  loop_control:
+    loop_var: archive
+    label: "{{ archive.name }} {{ archive.version }}"
+  vars:
+    packages_archive_dest: /usr/share/themes
+    packages_archive_marker: "/usr/share/themes/.{{ archive.name }}-{{ archive.version }}"
+
+- name: Add the Flathub remote
+  become: true
+  community.general.flatpak_remote:
+    name: flathub
+    flatpakrepo_url: https://dl.flathub.org/repo/flathub.flatpakrepo
+    method: system
+    state: present
+
+- name: Install Flatpak applications
+  become: true
+  community.general.flatpak:
+    name: "{{ ubuntu_flatpaks | difference(packages_skip) }}"
+    remote: flathub
+    method: system
+    state: present
+  when: ubuntu_flatpaks | difference(packages_skip) | length > 0

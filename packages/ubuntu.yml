@@ -1,0 +1,384 @@
+# Ubuntu 26.04 (Resolute Raccoon) packages. Mirrors packages/archlinux.yml;
+# tools Ubuntu does not ship come from vendor apt repos, GitHub releases,
+# Flathub, or (niri, xwayland-satellite) are built from source.
+
+# Display manager package (shared/default-x-display-manager).
+ubuntu_display_manager: gdm3
+
+ubuntu_apt_packages:
+  # Desktop session
+  - dbus-user-session
+  - fuzzel
+  - ghostty
+  - gnome-keyring
+  - grim
+  - hyprlock
+  - hyprpolkitagent
+  - kanshi
+  - keyd
+  - libsecret-tools
+  - playerctl
+  - seahorse
+  - slurp
+  - sway-notification-center
+  - swaybg
+  - swayidle
+  - swayosd
+  - udiskie
+  - uwsm
+  - waybar
+  - wdisplays
+  - wl-clipboard
+  - wl-mirror
+  - xdg-desktop-portal-gnome
+  - xdg-desktop-portal-gtk
+  - xdg-utils
+  - xwayland
+  # Audio, video, hardware
+  - amd64-microcode
+  - bluez
+  - bolt
+  - brightnessctl
+  - btrfs-progs
+  - efibootmgr
+  - firmware-sof-signed
+  - fprintd
+  - fwupd
+  - gstreamer1.0-pipewire
+  - i965-va-driver
+  - intel-media-va-driver
+  - intel-microcode
+  - iwd
+  - libpam-fprintd
+  - mesa-vulkan-drivers
+  - pamixer
+  - pipewire
+  - pipewire-alsa
+  - pipewire-jack
+  - pipewire-pulse
+  - power-profiles-daemon
+  - pulseaudio-utils
+  - smartmontools
+  - systemd-zram-generator
+  - vainfo
+  - wireplumber
+  - wpasupplicant
+  # Fonts
+  - fonts-firacode
+  - fonts-font-awesome
+  - fonts-noto-color-emoji
+  # Shell and CLI
+  - bat
+  - bc
+  - bind9-dnsutils
+  - btop
+  - build-essential
+  - cpio
+  - curl
+  - fish
+  - fzf
+  - git
+  - htop
+  - imagemagick
+  - jq
+  - man-db
+  - nano
+  - neovim
+  - openssh-client
+  - pv
+  - rsync
+  - shellcheck
+  - unzip
+  - vim
+  - wget
+  - xz-utils
+  - yq
+  - zoxide
+  # Development
+  - awscli
+  - caddy
+  - composer
+  - docker-buildx
+  - docker-compose-v2
+  - docker.io
+  - golang-go
+  - mariadb-server
+  - nodejs
+  - npm
+  - pipx
+  - postgresql
+  - python3-boto3
+  - python3-pip
+  - python3-pytest
+  - python3-yaml
+  # Applications
+  - dolphin
+  - evince
+  - flatpak
+  - freerdp3-x11
+  - gnome-boxes
+  - gnome-disk-utility
+  - kwalletmanager
+  - libreoffice
+  - mpv
+  - obs-studio
+  - remmina
+  - ufw
+  - wireshark
+
+# Ubuntu renames some binaries; link the names the configs and habits expect.
+ubuntu_command_aliases:
+  - name: bat
+    target: /usr/bin/batcat
+  # The niri config launches Helium by its Arch name.
+  - name: helium-browser
+    target: /usr/bin/helium
+
+# Rust projects without Ubuntu packages or prebuilt binaries, built with cargo.
+ubuntu_source_builds:
+  - name: niri
+    repo: https://github.com/YaLTeR/niri.git
+    version: v26.04
+    binaries: [niri]
+    build_deps:
+      - libdbus-1-dev
+      - libdisplay-info-dev
+      - libegl1-mesa-dev
+      - libgbm-dev
+      - libinput-dev
+      - libpango1.0-dev
+      - libpipewire-0.3-dev
+      - libseat-dev
+      - libsystemd-dev
+      - libudev-dev
+      - libwayland-dev
+      - libxkbcommon-dev
+    files:
+      - { src: resources/niri-session, dest: /usr/local/bin/niri-session, mode: "0755" }
+      - { src: resources/niri.service, dest: /usr/local/lib/systemd/user/niri.service }
+      - { src: resources/niri-shutdown.target, dest: /usr/local/lib/systemd/user/niri-shutdown.target }
+      - { src: resources/niri.desktop, dest: /usr/share/wayland-sessions/niri.desktop }
+      - { src: resources/niri-portals.conf, dest: /usr/share/xdg-desktop-portal/niri-portals.conf }
+  - name: wiremix
+    repo: https://github.com/tsowell/wiremix.git
+    version: v0.11.0
+    binaries: [wiremix]
+    build_deps: [libclang-dev, libpipewire-0.3-dev]
+  - name: wl-clip-persist
+    repo: https://github.com/Linus789/wl-clip-persist.git
+    version: v0.5.0
+    binaries: [wl-clip-persist]
+    build_deps: []
+  - name: xwayland-satellite
+    repo: https://github.com/Supreeeme/xwayland-satellite.git
+    version: v0.8.3
+    binaries: [xwayland-satellite]
+    build_deps: [libclang-dev, libxcb1-dev, libxcb-cursor-dev, libxcb-cursor0]
+
+ubuntu_fonts:
+  - name: CaskaydiaMono-NerdFont
+    version: v3.5.1
+    url: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/CascadiaMono.tar.xz
+    sha256: e4fe0248bbe2558e907d26b55ed287403972f946239a4ea3f7a8afd3365ad6ba
+
+ubuntu_gtk_themes:
+  - name: adw-gtk3
+    version: "6.5"
+    url: https://github.com/lassekongo83/adw-gtk3/releases/download/v6.5/adw-gtk3v6.5.tar.xz
+    sha256: a81780fadfc432be0fc3d89c4ebb41aa28e4f032d42c36f9789c57dd10cfa41c
+
+# Vendor apt repositories (deb822). `packages` are installed from each repo.
+ubuntu_apt_repositories:
+  - name: beekeeper-studio
+    key_url: https://deb.beekeeperstudio.io/beekeeper.key
+    uris: https://deb.beekeeperstudio.io
+    suites: stable
+    components: main
+    architectures: amd64
+    packages: [beekeeper-studio]
+  - name: brave-browser-release
+    key_url: https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+    uris: https://brave-browser-apt-release.s3.brave.com
+    suites: stable
+    components: main
+    architectures: amd64
+    packages: [brave-browser]
+  # Official ChatGPT desktop app with Codex. Its postinst manages chatgpt.sources
+  # unless told not to, so use that name and switch the postinst off.
+  - name: chatgpt
+    key_url: https://persistent.oaistatic.com/codex-app-prod/linux/repository-signing-key.gpg
+    uris: https://persistent.oaistatic.com/codex-app-prod/linux/deb
+    suites: stable
+    components: main
+    architectures: amd64
+    packages: [chatgpt]
+    defaults_file: { path: /etc/default/chatgpt, content: 'repo_add_once="false"' }
+  - name: claude-desktop
+    key_url: https://downloads.claude.ai/claude-desktop/key.asc
+    uris: https://downloads.claude.ai/claude-desktop/apt/stable
+    suites: stable
+    components: main
+    architectures: amd64
+    packages: [claude-desktop]
+    defaults_file: { path: /etc/default/claude-desktop, content: 'CLAUDE_DESKTOP_ADD_REPO="false"' }
+    replaces_files: [/etc/apt/sources.list.d/claude-desktop.list]
+  - name: dbeaver-ce
+    key_url: https://dbeaver.io/debs/dbeaver.gpg.key
+    uris: https://dbeaver.io/debs/dbeaver-ce
+    suites: /
+    packages: [dbeaver-ce]
+  - name: github-cli
+    key_url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+    uris: https://cli.github.com/packages
+    suites: stable
+    components: main
+    architectures: amd64
+    packages: [gh]
+  # Same name as the file Chrome's own package manages, so both edit one file.
+  - name: google-chrome
+    key_url: https://dl.google.com/linux/linux_signing_key.pub
+    uris: https://dl.google.com/linux/chrome/deb/
+    suites: stable
+    components: main
+    architectures: amd64
+    packages: [google-chrome-stable]
+  # Use suite "prerelease" for Helium's pre-release builds.
+  - name: helium
+    key_url: https://raw.githubusercontent.com/imputnet/helium-linux/main/pubkey.asc
+    uris: https://pkg.helium.computer/deb
+    suites: stable
+    components: main
+    architectures: amd64
+    packages: [helium-bin]
+  # Firefox as a real deb instead of Ubuntu's snap wrapper.
+  - name: mozilla
+    key_url: https://packages.mozilla.org/apt/repo-signing-key.gpg
+    uris: https://packages.mozilla.org/apt
+    suites: mozilla
+    components: main
+    packages: [firefox]
+    pin:
+      origin: packages.mozilla.org
+      priority: 1000
+  - name: onlyoffice
+    key_url: https://download.onlyoffice.com/GPG-KEY-ONLYOFFICE
+    uris: https://download.onlyoffice.com/repo/debian
+    suites: squeeze
+    components: main
+    architectures: amd64
+    packages: [onlyoffice-desktopeditors]
+  - name: vscode
+    key_url: https://packages.microsoft.com/keys/microsoft.asc
+    uris: https://packages.microsoft.com/repos/code
+    suites: stable
+    components: main
+    architectures: amd64
+    packages: [code]
+
+# Answers to package install prompts, set before installing.
+ubuntu_debconf:
+  # The playbook manages the VS Code repo; stop the package adding a duplicate.
+  - { name: code, question: code/add-microsoft-repo, value: "false", vtype: boolean }
+
+# Standalone .deb downloads. Installed when missing, or when `version` differs
+# from the installed one (omit `version` to install once and leave it).
+ubuntu_debs:
+  - name: balena-etcher
+    version: "2.1.9"
+    url: https://github.com/balena-io/etcher/releases/download/v2.1.9/balena-etcher_2.1.9_amd64.deb
+    sha256: 7e0d0e0986e5d0f3d9c03a4c0004f9891235150e0da99fa0bc332d8c03f1a4c0
+  - name: t3code
+    version: "0.1.10~nightly.20261114.4695"
+    url: https://github.com/pingdotgg/t3code/releases/download/v0.1.10-nightly.20261114.4695/T3-Code-0.1.10-nightly.20261114.4695-amd64.deb
+    sha256: 458044322561c2e921675bdb6c708d81f74253a39170da6d7c90c3c52f05ef7f
+  - name: aws-session-manager-plugin
+    package: session-manager-plugin
+    url: https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb
+
+# Prebuilt release downloads, unpacked into /opt/dotfiles/<name>/<version>.
+# `binaries` are paths inside the download, linked into /usr/local/bin under
+# their basename, or under `as` when given.
+ubuntu_release_binaries:
+  - name: bluetui
+    version: "0.8.2"
+    url: https://github.com/pythops/bluetui/releases/download/v0.8.2/bluetui-x86_64-linux-musl
+    sha256: b476ee473cb4f7a48cd75d440e991bedc835ff5ac704aac1f1992f8e826222fd
+    format: raw
+    binaries: [{ path: bluetui-x86_64-linux-musl, as: bluetui }]
+  - name: bun
+    version: "1.4.4"
+    url: https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-linux-x64.zip
+    sha256: bf8ccbfb2b0b80159e0f9a6d15c55317add8077534dbc6130a3edb52fccb395c
+    format: zip
+    binaries: [bun-linux-x64/bun]
+  - name: difftastic
+    version: "0.72.0"
+    url: https://github.com/Wilfred/difftastic/releases/download/0.72.0/difft-0.72.0-x86_64-unknown-linux-musl.tar.gz
+    sha256: 27b9c1fe038a95682eed241265a3cacb781227730f106104b617e10067d38ff4
+    format: tar.gz
+    binaries: [difft]
+  - name: helm
+    version: "4.3.2"
+    url: https://get.helm.sh/helm-v4.3.2-linux-amd64.tar.gz
+    sha256: d1c0278d46beab79582d7e50f5b3dc206944ba8e577cde618513fd07daa53983
+    format: tar.gz
+    binaries: [linux-amd64/helm]
+  - name: impala
+    version: "0.9.0"
+    url: https://github.com/pythops/impala/releases/download/v0.9.0/impala-x86_64-unknown-linux-musl
+    sha256: 8dd39cec5137277717821c48d04cfd49d95b1393c8ff342bd77e538d87684acd
+    format: raw
+    binaries: [{ path: impala-x86_64-unknown-linux-musl, as: impala }]
+  - name: jj
+    version: "0.47.1"
+    url: https://github.com/jj-vcs/jj/releases/download/v0.47.1/jj-v0.47.1-x86_64-unknown-linux-musl.tar.gz
+    sha256: d4b657f622ee50929c8916466dfa3d6a6c17a0a32b50e7b2c793707ec9ebcad7
+    format: tar.gz
+    binaries: [jj]
+  - name: kubectl
+    version: "1.37.2"
+    url: https://dl.k8s.io/release/v1.37.2/bin/linux/amd64/kubectl
+    sha256: c04487523e7aa7d1493f7808174c899db93d7a9cf57531420cd76b9bd415f8f4
+    format: raw
+    binaries: [kubectl]
+  - name: lazydocker
+    version: "0.25.2"
+    url: https://github.com/jesseduffield/lazydocker/releases/download/v0.25.2/lazydocker_0.25.2_Linux_x86_64.tar.gz
+    sha256: 0d9dbfc26068b218e7ed84b104748cadc6e3cf733c0afd35465306fb39b9523c
+    format: tar.gz
+    binaries: [lazydocker]
+  - name: pnpm
+    version: "12.18.0"
+    url: https://github.com/pnpm/pnpm/releases/download/v12.18.0/pnpm-linux-x64.tar.gz
+    sha256: 3726060e236c0db3e7124c0a5af123c840ba0cb76682149b63ea0baf290017c2
+    format: tar.gz
+    binaries: [pnpm]
+  - name: talosctl
+    version: "1.14.6"
+    url: https://github.com/siderolabs/talos/releases/download/v1.14.6/talosctl-linux-amd64
+    sha256: 11acde7f7578ffe9cbe6fb8349b34595065f597de0842615982e350b365de987
+    format: raw
+    binaries: [{ path: talosctl-linux-amd64, as: talosctl }]
+  - name: tflint
+    version: "0.66.0"
+    url: https://github.com/terraform-linters/tflint/releases/download/v0.66.0/tflint_linux_amd64.zip
+    sha256: 22be11cadc25cd02401e94c0ccc91aa63467debb8485c2a755d98f4c0a9d1e2e
+    format: zip
+    binaries: [tflint]
+  - name: uv
+    version: "0.13.8"
+    url: https://github.com/astral-sh/uv/releases/download/0.13.8/uv-x86_64-unknown-linux-musl.tar.gz
+    sha256: 61fb26dabc4f0cf1d050fc6c67d40e43e4fae2994af21ebc1e050b233bf2b5ed
+    format: tar.gz
+    binaries: [uv-x86_64-unknown-linux-musl/uv, uv-x86_64-unknown-linux-musl/uvx]
+  - name: yazi
+    version: "26.9.1"
+    url: https://github.com/sxyazi/yazi/releases/download/v26.9.1/yazi-x86_64-unknown-linux-musl.zip
+    sha256: 9b9c39decccf8cb0ff53a7d637d38f8a79d93bbd0099f4ea9c619ef6bb392f5d
+    format: zip
+    binaries: [yazi-x86_64-unknown-linux-musl/yazi, yazi-x86_64-unknown-linux-musl/ya]
+
+ubuntu_flatpaks:
+  - app.zen_browser.zen
+  - com.bitwarden.desktop
+  - com.usebruno.Bruno

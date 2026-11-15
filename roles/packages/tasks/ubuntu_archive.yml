@@ -1,0 +1,42 @@
+# Unpack one verified archive (fonts, themes) once per version. Expects
+# `archive` plus packages_archive_dest, packages_archive_marker and optionally
+# packages_archive_notify.
+- name: "Check whether this version is installed | {{ archive.name }}"
+  ansible.builtin.stat:
+    path: "{{ packages_archive_marker }}"
+  register: packages_archive_installed
+
+- name: "Download and unpack | {{ archive.name }}"
+  become: true
+  when: not packages_archive_installed.stat.exists
+  block:
+    - name: "Create the destination | {{ archive.name }}"
+      ansible.builtin.file:
+        path: "{{ packages_archive_dest }}"
+        state: directory
+        mode: "0755"
+
+    - name: "Download the verified archive | {{ archive.name }}"
+      ansible.builtin.get_url:
+        url: "{{ archive.url }}"
+        dest: "{{ packages_download_dir }}/{{ archive.url | basename }}"
+        checksum: "sha256:{{ archive.sha256 }}"
+        mode: "0644"
+
+    - name: "Unpack | {{ archive.name }}"
+      ansible.builtin.unarchive:
+        src: "{{ packages_download_dir }}/{{ archive.url | basename }}"
+        remote_src: true
+        dest: "{{ packages_archive_dest }}"
+      notify: "{{ packages_archive_notify | default(omit) }}"
+
+    - name: "Record the installed version | {{ archive.name }}"
+      ansible.builtin.copy:
+        dest: "{{ packages_archive_marker }}"
+        content: "{{ archive.url }}\n"
+        mode: "0644"
+  always:
+    - name: "Remove the downloaded archive | {{ archive.name }}"
+      ansible.builtin.file:
+        path: "{{ packages_download_dir }}/{{ archive.url | basename }}"
+        state: absent

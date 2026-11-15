@@ -1,0 +1,187 @@
+# A kernel upgrade earlier in the run removes the running kernel's modules, so
+# services needing one (keyd: uinput, docker: overlay) cannot start until reboot.
+- name: Check that the running kernel's modules are installed
+  ansible.builtin.stat:
+    path: "/usr/lib/modules/{{ ansible_facts.kernel }}"
+  register: services_kernel_modules
+
+- name: Note whether a reboot is required before starting services
+  ansible.builtin.set_fact:
+    services_reboot_required: "{{ not services_kernel_modules.stat.exists }}"
+
+- name: Add the desktop user to extra groups
+  become: true
+  ansible.builtin.user:
+    name: "{{ desktop_user }}"
+    groups: "{{ desktop_user_groups }}"
+    append: true
+
+- name: Boot into the graphical target
+  become: true
+  ansible.builtin.file:
+    src: /usr/lib/systemd/system/graphical.target
+    dest: /etc/systemd/system/default.target
+    state: link
+    force: true
+
+# Only one unit can own display-manager.service; enabling ours while another
+# display manager holds it fails, so hand it over first.
+- name: Find the active display manager
+  ansible.builtin.stat:
+    path: /etc/systemd/system/display-manager.service
+  register: services_dm_link
+
+- name: Disable a different display manager
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ services_dm_link.stat.lnk_source | basename }}"
+    enabled: false
+  when:
+    - services_dm_link.stat.islnk | default(false)
+    - services_dm_link.stat.lnk_source | basename != display_manager_service
+
+- name: Enable the display manager
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ display_manager_service }}"
+    enabled: true
+
+- name: Configure display manager autologin
+  ansible.builtin.include_tasks: autologin.yml
+
+- name: Create directories for system config files
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ system_files | map(attribute='path') | map('dirname') | unique }}"
+
+- name: Install system config files
+  become: true
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/system{{ item.path }}"
+    dest: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ system_files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  register: services_system_files
+
+- name: Enable and start system services
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: "{{ omit if services_reboot_required else 'started' }}"
+  loop: "{{ system_services }}"
+
+- name: Restart services whose config changed
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: restarted
+  loop: >-
+    {{ services_system_files.results | selectattr('changed')
+       | selectattr('item.restarts', 'defined') | map(attribute='item.restarts') | unique }}
+  when: not services_reboot_required
+
+# Off by default: ufw ships with ENABLED=no, and enabling it changes what is
+# reachable on the machine (set firewall_allow for anything that must be).
+- name: Turn on the firewall
+  when: firewall_enabled | bool
+  become: true
+  block:
+    - name: Allow listed incoming ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item.port | string }}"
+        proto: "{{ item.proto | default('tcp') }}"
+      loop: "{{ firewall_allow }}"
+      loop_control:
+        label: "{{ item.port }}/{{ item.proto | default('tcp') }}"
+
+    - name: Deny other incoming traffic
+      community.general.ufw:
+        default: deny
+        direction: incoming
+
+    - name: Enable ufw
+      community.general.ufw:
+        state: enabled
+
+- name: List installed system units
+  ansible.builtin.command:
+    argv: [systemctl, list-unit-files, --type=service, --no-legend, --plain]
+  register: services_system_units
+  changed_when: false
+
+- name: Disable services the desktop does not run
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  loop: "{{ system_services_disabled + system_services_disabled_by_distro[ansible_facts.distribution] | default([]) }}"
+  when: item in (services_system_units.stdout_lines | map('split') | map('first'))
+
+- name: Check for a systemd user manager
+  ansible.builtin.command:
+    argv: [systemctl, --user, show-environment]
+  register: services_user_bus
+  changed_when: false
+  failed_when: false
+
+- name: Report that user services were skipped
+  ansible.builtin.debug:
+    msg: User systemd bus is unavailable; skipping user services.
+  when: services_user_bus.rc != 0
+
+- name: Manage systemd user services
+  when: services_user_bus.rc == 0
+  block:
+    - name: Reload systemd user units
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+        scope: user
+      changed_when: false
+
+    - name: List installed user units
+      ansible.builtin.command:
+        argv: [systemctl, --user, list-unit-files, --type=service, --no-legend, --plain]
+      register: services_user_units
+      changed_when: false
+
+    - name: Disable stale or conflicting user services
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        scope: user
+        enabled: false
+        state: stopped
+      loop: "{{ user_services_disabled }}"
+      when: item in (services_user_units.stdout_lines | map('split') | map('first'))
+
+    - name: Check whether a graphical session is running
+      ansible.builtin.command:
+        argv: [systemctl, --user, is-active, --quiet, graphical-session.target]
+      register: services_graphical_session
+      changed_when: false
+      failed_when: false
+
+    - name: Enable user services
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        scope: user
+        enabled: true
+        # Start now only inside a graphical session; otherwise they start at next login.
+        state: "{{ 'started' if services_graphical_session.rc == 0 else omit }}"
+      loop: "{{ user_services }}"
+
+- name: Warn that a reboot is required
+  ansible.builtin.debug:
+    msg: >-
+      The running kernel ({{ ansible_facts.kernel }}) was replaced during this run.
+      System services were enabled but not started; reboot to start them.
+  when: services_reboot_required

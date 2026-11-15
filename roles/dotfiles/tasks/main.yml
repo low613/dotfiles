@@ -1,0 +1,125 @@
+# Link each package's .config/* entries into ~/.config, the way `stow` used to.
+# Shared parents (~/.config, ~/.local, ~/.config/systemd/user) stay real
+# directories so applications and systemd can write their own state there.
+
+- name: Check shared directories for links into the repo
+  ansible.builtin.stat:
+    path: "{{ desktop_home }}/{{ item }}"
+  loop: [.config, .local, .config/systemd, .config/systemd/user]
+  register: dotfiles_shared_dirs
+
+- name: Refuse to replace shared directories that link outside the repo
+  ansible.builtin.assert:
+    that: item.stat.lnk_source is match(dotfiles_dir ~ '/')
+    fail_msg: "{{ item.stat.path }} is a symlink to {{ item.stat.lnk_source }}; move it aside and rerun."
+    quiet: true
+  loop: "{{ dotfiles_shared_dirs.results | selectattr('stat.islnk', 'defined') | selectattr('stat.islnk') }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Unfold shared directories that were folded into the repo
+  ansible.builtin.file:
+    path: "{{ item.stat.path }}"
+    state: absent
+  loop: "{{ dotfiles_shared_dirs.results | selectattr('stat.islnk', 'defined') | selectattr('stat.islnk') }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Create shared directories
+  ansible.builtin.file:
+    path: "{{ desktop_home }}/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - .config
+    - .config/systemd/user
+    - .local/share
+    - .local/state
+    - Pictures/Screenshots
+
+- name: Create the ignored Niri local config from the example
+  ansible.builtin.copy:
+    src: "{{ dotfiles_dir }}/niri/.config/niri/config.local.kdl.example"
+    dest: "{{ dotfiles_dir }}/niri/.config/niri/config.local.kdl"
+    remote_src: true
+    force: false
+    mode: "0644"
+
+- name: Find config entries in each package
+  ansible.builtin.find:
+    paths: "{{ dotfiles_dir }}/{{ item }}/.config"
+    file_type: any
+    hidden: true
+  loop: "{{ dotfiles_packages }}"
+  register: dotfiles_found
+
+- name: Collect links to create
+  ansible.builtin.set_fact:
+    dotfiles_links: "{{ dotfiles_found.results | map(attribute='files') | flatten | map(attribute='path') | sort }}"
+
+- name: Inspect existing link targets
+  ansible.builtin.stat:
+    path: "{{ desktop_home }}/.config/{{ item | basename }}"
+  loop: "{{ dotfiles_links }}"
+  loop_control:
+    label: "~/.config/{{ item | basename }}"
+  register: dotfiles_targets
+
+- name: Back up existing files and directories in the way
+  vars:
+    dotfiles_in_the_way: >-
+      {{ dotfiles_targets.results | selectattr('stat.exists')
+         | rejectattr('stat.islnk') | map(attribute='stat.path') | list }}
+    dotfiles_backup_dir: "{{ desktop_home }}/.dotfiles.bak/{{ ansible_facts.date_time.iso8601_basic_short }}"
+  when: dotfiles_in_the_way | length > 0
+  block:
+    - name: Create the backup directory
+      ansible.builtin.file:
+        path: "{{ dotfiles_backup_dir }}/.config"
+        state: directory
+        mode: "0700"
+
+    - name: Move existing entries into the backup directory
+      ansible.builtin.command:
+        argv: [mv, --no-clobber, --, "{{ item }}", "{{ dotfiles_backup_dir }}/.config/"]
+      loop: "{{ dotfiles_in_the_way }}"
+      changed_when: true
+
+- name: Link configs into ~/.config
+  ansible.builtin.file:
+    src: "{{ item }}"
+    dest: "{{ desktop_home }}/.config/{{ item | basename }}"
+    state: link
+    force: true
+  loop: "{{ dotfiles_links }}"
+  loop_control:
+    label: "~/.config/{{ item | basename }}"
+
+- name: Find repo-managed systemd user units
+  ansible.builtin.find:
+    paths: "{{ dotfiles_dir }}/systemd/.config/systemd/user"
+    patterns: ["*.service", "*.target", "*.timer"]
+  register: dotfiles_units
+
+- name: Link repo-managed systemd user units
+  ansible.builtin.file:
+    src: "{{ item.path }}"
+    dest: "{{ desktop_home }}/.config/systemd/user/{{ item.path | basename }}"
+    state: link
+    force: true
+  loop: "{{ dotfiles_units.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+
+- name: Check whether the Tide prompt is configured
+  ansible.builtin.command:
+    argv: [fish, --command, set --query tide_left_prompt_items]
+  register: dotfiles_tide
+  changed_when: false
+  failed_when: dotfiles_tide.rc not in [0, 1]
+
+- name: Configure the Tide prompt
+  ansible.builtin.command:
+    argv: [fish, --command, "tide configure {{ tide_configure_args | map('quote') | join(' ') }}"]
+  changed_when: true
+  when: dotfiles_tide.rc != 0

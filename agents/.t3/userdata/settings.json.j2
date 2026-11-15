@@ -1,0 +1,31 @@
+{
+  "storageCleanup": {
+    "worktreeAfterDays": 8,
+    "worktreeOnMerge": true,
+    "worktreeOnDelete": true,
+    "worktreeUnchanged": true,
+    "logsAfterDays": 8
+  },
+  "defaultAutoPull": true,
+  "defaultRuntimeMode": "auto",
+  "projectSettingsFolded": true,
+  "idleCompaction": "onReturn",
+  "defaultThreadEnvMode": "worktree",
+  "providerInstances": {
+    "opencode": {
+      "driver": "opencode",
+      "enabled": false,
+      "config": { "binaryPath": "{{ desktop_home }}/.local/bin/opencode" }
+    },
+    "codex": {
+      "driver": "codex",
+      "enabled": false,
+      "config": { "binaryPath": "{{ desktop_home }}/.local/bin/codex" }
+    },
+    "claudeAgent": {
+      "driver": "claudeAgent",
+      "enabled": true,
+      "config": { "binaryPath": "{{ desktop_home }}/.local/bin/claude" }
+    }
+  }
+}

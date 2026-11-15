@@ -1,0 +1,7 @@
+interface:
+  display_name: "Pre-push Review Gate"
+  short_description: "Review and fix changes before any PR push"
+  default_prompt: "Use $pre-push-review-gate to review my changes and gate the push."
+
+policy:
+  allow_implicit_invocation: true

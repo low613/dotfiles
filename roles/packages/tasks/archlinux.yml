@@ -1,0 +1,183 @@
+- name: Load Arch package lists
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/packages/archlinux.yml"
+
+# Trust keys and write repository definitions before any database sync:
+# pacman refuses to sync at all while a configured repo's key is untrusted.
+- name: Add third-party pacman repositories
+  become: true
+  block:
+    - name: Download repository signing keys
+      ansible.builtin.get_url:
+        url: "{{ item.key_url }}"
+        dest: "/etc/pacman.d/{{ item.name }}.key"
+        mode: "0644"
+      loop: "{{ arch_pacman_repositories }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    # Validity "f"/"u" means the key is locally signed by the pacman keyring
+    # (trusted); an imported but unsigned key is still rejected by TrustedOnly.
+    - name: Check whether repository keys are trusted
+      ansible.builtin.command:
+        argv: [gpg, --homedir, /etc/pacman.d/gnupg, --no-permission-warning, --with-colons, --list-keys, "{{ item.key_fingerprint }}"]
+      loop: "{{ arch_pacman_repositories }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: packages_repo_keys
+      changed_when: false
+      failed_when: false
+
+    - name: Import repository signing keys
+      ansible.builtin.command:
+        argv: [pacman-key, --add, "/etc/pacman.d/{{ item.item.name }}.key"]
+      loop: "{{ packages_repo_keys.results | rejectattr('rc', 'eq', 0) }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+      changed_when: true
+
+    - name: Locally sign repository keys
+      ansible.builtin.command:
+        argv: [pacman-key, --lsign-key, "{{ item.item.key_fingerprint }}"]
+      loop: >-
+        {{ packages_repo_keys.results
+           | rejectattr('stdout', 'search', '(?m)^pub:[fu]:') }}
+      loop_control:
+        label: "{{ item.item.name }}"
+      changed_when: true
+
+    - name: Write repository definitions
+      ansible.builtin.copy:
+        dest: "/etc/pacman.d/{{ item.name }}.conf"
+        content: |
+          [{{ item.name }}]
+          SigLevel = Required DatabaseRequired TrustedOnly
+          Server = {{ item.server }}
+        mode: "0644"
+      loop: "{{ arch_pacman_repositories }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: packages_repo_defs
+
+    - name: Include repository definitions in pacman.conf
+      ansible.builtin.lineinfile:
+        path: /etc/pacman.conf
+        line: "Include = /etc/pacman.d/{{ item.name }}.conf"
+      loop: "{{ arch_pacman_repositories }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: packages_repo_includes
+
+# Syncing the package database without upgrading everything is a partial
+# upgrade, so the database is only refreshed as part of a full upgrade (or to
+# read a newly added repository).
+- name: Refresh the package database and keyring
+  become: true
+  community.general.pacman:
+    name: archlinux-keyring
+    state: latest
+    update_cache: true
+  when: packages_arch_full_upgrade | bool
+
+- name: Upgrade the system
+  become: true
+  community.general.pacman:
+    upgrade: true
+  when: packages_arch_full_upgrade | bool
+
+- name: Install pacman packages
+  become: true
+  community.general.pacman:
+    name: "{{ arch_pacman_packages + (arch_pacman_repositories | map(attribute='packages') | flatten) }}"
+    state: present
+    update_cache: >-
+      {{ packages_arch_full_upgrade | bool
+         or packages_repo_defs is changed or packages_repo_includes is changed }}
+
+- name: Check whether yay is installed
+  ansible.builtin.stat:
+    path: /usr/bin/yay
+  register: packages_yay
+
+- name: Build and install yay-bin
+  when: not packages_yay.stat.exists
+  block:
+    - name: Create a build directory for yay-bin
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: yay-bin.
+      register: packages_yay_build
+
+    - name: Clone yay-bin from the AUR  # noqa: latest[git] - always build the current AUR package
+      ansible.builtin.git:
+        repo: https://aur.archlinux.org/yay-bin.git
+        dest: "{{ packages_yay_build.path }}/yay-bin"
+        depth: 1
+
+    - name: Build the yay-bin package
+      ansible.builtin.command:
+        argv: [makepkg, --noconfirm]
+        chdir: "{{ packages_yay_build.path }}/yay-bin"
+      changed_when: true
+
+    - name: Find the built yay-bin package
+      ansible.builtin.find:
+        paths: "{{ packages_yay_build.path }}/yay-bin"
+        patterns: ["yay-bin-*.pkg.tar.zst"]
+        excludes: ["yay-bin-debug-*"]
+      register: packages_yay_pkg
+
+    - name: Install yay-bin
+      become: true
+      community.general.pacman:
+        name: "{{ packages_yay_pkg.files | map(attribute='path') | list }}"
+        state: present
+  always:
+    - name: Remove the yay-bin build directory
+      ansible.builtin.file:
+        path: "{{ packages_yay_build.path }}"
+        state: absent
+      when: packages_yay_build.path is defined
+
+- name: List installed packages
+  ansible.builtin.package_facts:
+    manager: pacman
+
+# A run killed mid-build skips the `always:` cleanup below, and later runs may
+# skip the AUR block entirely, so remove any leftover rule unconditionally.
+- name: Remove a leftover temporary pacman sudo rule
+  become: true
+  ansible.builtin.file:
+    path: /etc/sudoers.d/90-dotfiles-aur
+    state: absent
+
+- name: Install AUR packages
+  vars:
+    packages_aur_missing: >-
+      {{ arch_aur_packages | difference(packages_skip)
+         | difference(ansible_facts.packages.keys()) }}
+  when: packages_aur_missing | length > 0
+  block:
+    # yay must run as the desktop user and calls `sudo pacman` itself, which
+    # cannot prompt under Ansible. Allow only that for the duration of the run.
+    - name: Temporarily allow pacman without a password for yay
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/90-dotfiles-aur
+        content: "{{ desktop_user }} ALL=(root) NOPASSWD: /usr/bin/pacman\n"
+        mode: "0440"
+        validate: visudo -cf %s
+
+    - name: Install AUR packages with yay
+      kewlfft.aur.aur:
+        name: "{{ packages_aur_missing }}"
+        state: present
+        use: yay
+        aur_only: true
+        extra_args: --answerdiff None --answerclean None --removemake
+  always:
+    - name: Remove the temporary pacman sudo rule
+      become: true
+      ansible.builtin.file:
+        path: /etc/sudoers.d/90-dotfiles-aur
+        state: absent
