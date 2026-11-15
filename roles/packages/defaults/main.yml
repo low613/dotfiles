@@ -1,0 +1,11 @@
+# Arch: run a full `pacman -Syu` before installing, like a normal Arch update.
+packages_arch_full_upgrade: true
+
+# Where release binaries and source builds are installed (one dir per version).
+packages_install_root: /opt/dotfiles
+# Where source builds are cloned and compiled, as the desktop user.
+packages_build_root: "{{ desktop_home }}/.cache/dotfiles/build"
+
+# Skip packages whose downloads need a network you may not want hit (for
+# example in throwaway VMs). Names match arch_aur_packages or Ubuntu tool names.
+packages_skip: []

@@ -1,0 +1,5 @@
+- name: Refresh font cache
+  become: true
+  ansible.builtin.command:
+    argv: [fc-cache, --force]
+  changed_when: true

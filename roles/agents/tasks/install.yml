@@ -1,0 +1,70 @@
+# Agent CLIs are per-user installs under ~/.local so their self-updaters work
+# without root. Desktop apps come from the distro package lists.
+
+- name: Remove superseded agent CLIs from ~/.local
+  community.general.npm:
+    name: "{{ item }}"
+    global: true
+    state: absent
+  environment:
+    npm_config_prefix: "{{ desktop_home }}/.local"
+  loop: "{{ agents_npm_packages_absent }}"
+
+- name: Install agent CLIs from npm into ~/.local
+  community.general.npm:
+    name: "{{ item }}"
+    global: true
+    state: present
+  environment:
+    npm_config_prefix: "{{ desktop_home }}/.local"
+    # npm 12+ only runs install scripts for allowed packages (opencode needs
+    # its postinstall to place the binary). Older npm ignores this setting.
+    npm_config_allow_scripts: "{{ agents_npm_packages | join(',') }}"
+  loop: "{{ agents_npm_packages }}"
+
+# Claude Code's native install lives in ~/.local/share/claude and updates
+# itself, so the playbook only bootstraps it when it is missing.
+- name: Check for Claude Code
+  ansible.builtin.stat:
+    path: "{{ desktop_home }}/.local/bin/claude"
+  register: agents_claude
+
+- name: Bootstrap the Claude Code native install
+  when: not agents_claude.stat.exists
+  block:
+    - name: Look up the Claude Code release for the channel
+      ansible.builtin.uri:
+        url: "{{ agents_claude_release_base }}/{{ agents_claude_channel }}"
+        return_content: true
+      register: agents_claude_version
+
+    - name: Fetch the Claude Code release manifest
+      ansible.builtin.uri:
+        url: "{{ agents_claude_release_base }}/{{ agents_claude_version.content | trim }}/manifest.json"
+        return_content: true
+      register: agents_claude_manifest
+
+    - name: Create the Claude Code download directory
+      ansible.builtin.file:
+        path: "{{ desktop_home }}/.claude/downloads"
+        state: directory
+        mode: "0700"
+
+    - name: Download the Claude Code binary
+      ansible.builtin.get_url:
+        url: "{{ agents_claude_release_base }}/{{ agents_claude_version.content | trim }}/linux-x64/claude"
+        dest: "{{ desktop_home }}/.claude/downloads/claude-{{ agents_claude_version.content | trim }}-linux-x64"
+        checksum: "sha256:{{ agents_claude_manifest.json.platforms['linux-x64'].checksum }}"
+        mode: "0755"
+      register: agents_claude_download
+
+    - name: Install Claude Code
+      ansible.builtin.command:
+        argv: ["{{ agents_claude_download.dest }}", install, "{{ agents_claude_channel }}"]
+        creates: "{{ desktop_home }}/.local/bin/claude"
+  always:
+    - name: Remove the Claude Code bootstrap binary
+      ansible.builtin.file:
+        path: "{{ agents_claude_download.dest }}"
+        state: absent
+      when: agents_claude_download.dest is defined

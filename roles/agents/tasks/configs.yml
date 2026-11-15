@@ -1,0 +1,124 @@
+# Templates and merged/assembled files are read on the controller (the
+# playbook's copy of the repo); links point at dotfiles_dir on the target.
+
+- name: Find local-only agent files
+  ansible.builtin.find:
+    paths: "{{ dotfiles_dir }}/agents/local"
+    recurse: true
+    hidden: true
+  register: agents_local_found
+
+- name: Collect agent links
+  ansible.builtin.set_fact:
+    agents_link_items: >-
+      {%- set out = [] -%}
+      {%- for rel in agents_links -%}
+      {%- set _ = out.append({'src': dotfiles_dir ~ '/agents/' ~ rel, 'rel': rel}) -%}
+      {%- endfor -%}
+      {%- for f in agents_local_found.files -%}
+      {%- set rel = f.path | regex_replace('^' ~ (dotfiles_dir ~ '/agents/local/') | regex_escape, '') -%}
+      {%- if rel not in agents_assembled -%}
+      {%- set _ = out.append({'src': f.path, 'rel': rel}) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {{ out }}
+
+- name: Create parent directories for agent configs
+  ansible.builtin.file:
+    path: "{{ desktop_home }}/{{ item }}"
+    state: directory
+    mode: "0700"
+  loop: >-
+    {{ (agents_link_items | map(attribute='rel') | list
+        + agents_json_merges + agents_copies + agents_seeds + agents_assembled)
+       | map('dirname') | unique | sort }}
+
+- name: Inspect existing agent link targets
+  ansible.builtin.stat:
+    path: "{{ desktop_home }}/{{ item.rel }}"
+  loop: "{{ agents_link_items }}"
+  loop_control:
+    label: "~/{{ item.rel }}"
+  register: agents_targets
+
+- name: Back up agent files in the way
+  vars:
+    agents_in_the_way: >-
+      {{ agents_targets.results | selectattr('stat.exists') | rejectattr('stat.islnk')
+         | map(attribute='item.rel') | list }}
+    agents_backup_dir: "{{ desktop_home }}/.dotfiles.bak/{{ ansible_facts.date_time.iso8601_basic_short }}"
+  when: agents_in_the_way | length > 0
+  block:
+    - name: Create backup directories
+      ansible.builtin.file:
+        path: "{{ agents_backup_dir }}/{{ item | dirname }}"
+        state: directory
+        mode: "0700"
+      loop: "{{ agents_in_the_way }}"
+
+    - name: Move agent files into the backup directory
+      ansible.builtin.command:
+        argv: [mv, --no-clobber, --, "{{ desktop_home }}/{{ item }}", "{{ agents_backup_dir }}/{{ item }}"]
+      loop: "{{ agents_in_the_way }}"
+      changed_when: true
+
+- name: Link agent configs
+  ansible.builtin.file:
+    src: "{{ item.src }}"
+    dest: "{{ desktop_home }}/{{ item.rel }}"
+    state: link
+    force: true
+  loop: "{{ agents_link_items }}"
+  loop_control:
+    label: "~/{{ item.rel }}"
+
+- name: Read current agent settings
+  ansible.builtin.slurp:
+    src: "{{ desktop_home }}/{{ item }}"
+  loop: "{{ agents_json_merges }}"
+  register: agents_current
+  failed_when: false
+
+- name: Merge tracked agent settings
+  vars:
+    agents_src: "{{ playbook_dir }}/agents/{{ item.item }}"
+    agents_existing: "{{ (item.content | b64decode | from_json) if item.content is defined else {} }}"
+    agents_tracked: "{{ lookup('ansible.builtin.template', lookup('ansible.builtin.first_found', [agents_src ~ '.j2', agents_src])) | from_json }}"
+    agents_merged: "{{ agents_existing | combine(agents_tracked, recursive=true) }}"
+  ansible.builtin.copy:
+    dest: "{{ desktop_home }}/{{ item.item }}"
+    content: "{{ agents_merged | to_nice_json(indent=2) }}\n"
+    mode: "0600"
+  loop: "{{ agents_current.results }}"
+  loop_control:
+    label: "~/{{ item.item }}"
+  when: agents_merged != agents_existing
+
+- name: Copy agent configs the repo owns
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/agents/{{ item }}"
+    dest: "{{ desktop_home }}/{{ item }}"
+    mode: "0600"
+  loop: "{{ agents_copies }}"
+
+- name: Seed agent configs that apps manage afterwards
+  ansible.builtin.template:
+    src: "{{ lookup('ansible.builtin.first_found', [playbook_dir ~ '/agents/' ~ item ~ '.j2', playbook_dir ~ '/agents/' ~ item]) }}"
+    dest: "{{ desktop_home }}/{{ item }}"
+    force: false
+    mode: "0600"
+  loop: "{{ agents_seeds }}"
+
+- name: Assemble agent instructions from tracked and local parts
+  vars:
+    agents_local_part: "{{ playbook_dir }}/agents/local/{{ item }}"
+  ansible.builtin.copy:
+    dest: "{{ desktop_home }}/{{ item }}"
+    content: |
+      {{ lookup('ansible.builtin.file', playbook_dir ~ '/agents/' ~ item) }}
+      {% if agents_local_part is file %}
+
+      {{ lookup('ansible.builtin.file', agents_local_part) }}
+      {% endif %}
+    mode: "0644"
+  loop: "{{ agents_assembled }}"

@@ -1,0 +1,6 @@
+- name: Install agent apps
+  ansible.builtin.include_tasks: install.yml
+  tags: [packages]
+
+- name: Install agent configs
+  ansible.builtin.include_tasks: configs.yml

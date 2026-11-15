@@ -1,0 +1,116 @@
+# Where this repository lives on the machine being provisioned.
+dotfiles_dir: "{{ playbook_dir }}"
+desktop_user: "{{ ansible_facts.user_id }}"
+desktop_home: "{{ ansible_facts.user_dir }}"
+
+# Top-level repo directories whose .config/* entries are linked into ~/.config.
+dotfiles_packages:
+  - fish
+  - fuzzel
+  - ghostty
+  - hyprlock
+  - kanshi
+  - niri
+  - nvim
+  - swayidle
+  - swayosd
+  - waybar
+
+# Tide prompt settings applied once, when Tide has not been configured yet.
+tide_configure_args:
+  - --auto
+  - --style=Lean
+  - --prompt_colors=16 colors
+  - --show_time=No
+  - --lean_prompt_height=Two lines
+  - --prompt_connection=Dotted
+  - --prompt_spacing=Compact
+  - --icons=Few icons
+  - --transient=Yes
+
+# Session helpers and user daemons managed by systemd --user.
+user_services:
+  - hyprpolkitagent.service
+  - kanshi.service
+  - pipewire-pulse.service
+  - pipewire.service
+  - swayidle.service
+  - swaync.service
+  - swayosd-server.service
+  - waybar.service
+  - wireplumber.service
+
+# Conflicting or stale user services. mako is replaced by swaync.
+user_services_disabled:
+  - elephant.service
+  - hypridle.service
+  - mako.service
+
+# System services the desktop relies on (display manager is per-distro).
+system_services:
+  - bluetooth.service
+  - docker.service
+  - keyd.service              # Copilot key -> Super (system/etc/keyd)
+  - power-profiles-daemon.service
+  - ufw.service
+
+# Display manager unit per distribution.
+display_manager_service: >-
+  {{ {'Archlinux': 'plasmalogin.service', 'Ubuntu': 'gdm.service'}[ansible_facts.distribution] }}
+
+# Root-owned config files copied from system/<path> (system/ mirrors /).
+# `restarts` is restarted when the file changes.
+system_files:
+  - path: /etc/keyd/default.conf
+    restarts: keyd.service
+
+# Installed but left stopped, matching Arch where these are not enabled.
+system_services_disabled:
+  - mariadb.service
+  - postgresql.service
+
+# Extra groups for the desktop user.
+desktop_user_groups:
+  - docker
+  - kvm        # Claude Desktop Cowork VMs
+
+# Agent configs live under agents/, laid out like $HOME. Apps that rewrite
+# their own settings get those settings merged or seeded rather than linked.
+agents_links:            # apps never rewrite these; symlinked into $HOME
+  - .codex/skills/gh-address-comments
+  - .codex/skills/pre-push-review-gate
+  - .codex/skills/security-best-practices
+  - .config/opencode/AGENTS.md
+  - .config/opencode/opencode.jsonc
+agents_json_merges:      # deep-merged into the app's JSON (app-added keys kept)
+  - .claude/settings.json
+  - .t3/userdata/client-settings.json
+  - .t3/userdata/settings.json
+agents_copies:           # copied every run; the repo copy wins
+  - .t3/userdata/keybindings.json
+agents_seeds:            # written only when missing
+  - .codex/config.toml
+agents_assembled:        # tracked file + agents/local/<same path> appended
+  - .codex/AGENTS.md
+# Everything else under agents/local/ (gitignored) is symlinked into $HOME.
+
+# Agent CLIs installed per user into ~/.local (npm prefix), so they can update
+# themselves without root.
+agents_npm_packages:
+  - "@openai/codex"
+  - "@opencode/cli"
+# Removed first: they would clash with the packages above.
+agents_npm_packages_absent:
+  - opencode-ai     # old name of @opencode/cli
+
+# Claude Code native install (self-updating, in ~/.local). Channel: stable|latest.
+agents_claude_channel: stable
+agents_claude_release_base: https://downloads.claude.ai/claude-code-releases
+
+# Log straight into the desktop session from the display manager.
+#   auto  - only when / is on an encrypted (LUKS/dm-crypt) device, since the
+#           disk passphrase at boot already authenticates you
+#   true  - always;  false - never
+display_autologin: auto
+# Wayland session (from /usr/share/wayland-sessions) to log into.
+display_session: niri

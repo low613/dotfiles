@@ -1,0 +1,43 @@
+# Install one prebuilt release into /opt/dotfiles/<name>/<version> and link its
+# executables into /usr/local/bin. Expects `tool` (see packages/ubuntu.yml).
+- name: "Describe the executables | {{ tool.name }}"
+  ansible.builtin.set_fact:
+    packages_release_dir: "{{ packages_install_root }}/{{ tool.name }}/{{ tool.version }}"
+    # Entries are a path string or {path, as}; normalise to mappings.
+    packages_release_bins: >-
+      {% set bins = [] %}{% for b in tool.binaries %}{% set _ = bins.append(b if b is mapping else {'path': b}) %}{% endfor %}{{ bins }}
+
+- name: "Create the install directory | {{ tool.name }}"
+  become: true
+  ansible.builtin.file:
+    path: "{{ packages_release_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: "Download | {{ tool.name }}"
+  become: true
+  ansible.builtin.get_url:
+    url: "{{ tool.url }}"
+    dest: "{{ packages_release_dir }}/{{ packages_release_bins[0].path }}"
+    mode: "0755"
+  when: tool.format == 'raw'
+
+- name: "Unpack | {{ tool.name }}"
+  become: true
+  ansible.builtin.unarchive:
+    src: "{{ tool.url }}"
+    remote_src: true
+    dest: "{{ packages_release_dir }}"
+    creates: "{{ packages_release_dir }}/{{ packages_release_bins[0].path }}"
+  when: tool.format != 'raw'
+
+- name: "Link executables into /usr/local/bin | {{ tool.name }}"
+  become: true
+  ansible.builtin.file:
+    src: "{{ packages_release_dir }}/{{ item.path }}"
+    dest: "/usr/local/bin/{{ item.as | default(item.path | basename) }}"
+    state: link
+    force: true
+  loop: "{{ packages_release_bins }}"
+  loop_control:
+    label: "{{ item.as | default(item.path | basename) }}"

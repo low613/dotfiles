@@ -1,0 +1,82 @@
+# Build one Rust project with cargo as the desktop user, install it into
+# /opt/dotfiles/<name>/<version>, and link it into /usr/local/bin.
+# Expects `tool` (see ubuntu_source_builds in packages/ubuntu.yml).
+- name: "Check whether this version is installed | {{ tool.name ~ ' ' ~ tool.version }}"
+  ansible.builtin.stat:
+    path: "{{ packages_install_root }}/{{ tool.name }}/{{ tool.version }}/{{ tool.binaries[0] }}"
+  register: packages_source_installed
+
+- name: "Remove an outdated checkout before rebuilding | {{ tool.name }}"
+  ansible.builtin.file:
+    path: "{{ packages_build_root }}/{{ tool.name }}"
+    state: absent
+  when: not packages_source_installed.stat.exists
+
+- name: "Check for an existing checkout | {{ tool.name }}"
+  ansible.builtin.stat:
+    path: "{{ packages_build_root }}/{{ tool.name }}/.git"
+  register: packages_source_checkout
+
+# The checkout also provides support files, so keep it, but only fetch when a
+# build is needed or it went missing (re-fetching a shallow tag clone is fragile).
+- name: "Fetch source | {{ tool.name }}"
+  ansible.builtin.git:
+    repo: "{{ tool.repo }}"
+    dest: "{{ packages_build_root }}/{{ tool.name }}"
+    version: "{{ tool.version }}"
+    depth: 1
+    force: true
+  when: not (packages_source_installed.stat.exists and packages_source_checkout.stat.exists)
+
+- name: "Build | {{ tool.name }}"
+  ansible.builtin.command:
+    argv: "{{ ['cargo', 'build', '--release', '--locked'] + (tool.cargo_args | default([])) }}"
+    chdir: "{{ packages_build_root }}/{{ tool.name }}"
+  changed_when: true
+  when: not packages_source_installed.stat.exists
+
+- name: "Install executables | {{ tool.name }}"
+  become: true
+  when: not packages_source_installed.stat.exists
+  block:
+    - name: "Create the install directory | {{ tool.name }}"
+      ansible.builtin.file:
+        path: "{{ packages_install_root }}/{{ tool.name }}/{{ tool.version }}"
+        state: directory
+        mode: "0755"
+
+    - name: "Copy executables | {{ tool.name }}"
+      ansible.builtin.copy:
+        src: "{{ packages_build_root }}/{{ tool.name }}/target/release/{{ item }}"
+        dest: "{{ packages_install_root }}/{{ tool.name }}/{{ tool.version }}/{{ item }}"
+        remote_src: true
+        mode: "0755"
+      loop: "{{ tool.binaries }}"
+
+- name: "Link executables into /usr/local/bin | {{ tool.name }}"
+  become: true
+  ansible.builtin.file:
+    src: "{{ packages_install_root }}/{{ tool.name }}/{{ tool.version }}/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    state: link
+    force: true
+  loop: "{{ tool.binaries }}"
+
+- name: "Create directories for support files | {{ tool.name }}"
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ tool.files | default([]) | map(attribute='dest') | map('dirname') | unique }}"
+
+- name: "Install support files | {{ tool.name }}"
+  become: true
+  ansible.builtin.copy:
+    src: "{{ packages_build_root }}/{{ tool.name }}/{{ item.src }}"
+    dest: "{{ item.dest }}"
+    remote_src: true
+    mode: "{{ item.mode | default('0644') }}"
+  loop: "{{ tool.files | default([]) }}"
+  loop_control:
+    label: "{{ item.dest }}"

@@ -1,0 +1,78 @@
+- name: Find the device backing the root filesystem
+  ansible.builtin.command:
+    argv: [findmnt, --noheadings, --nofsroot, --output, SOURCE, --target, /]
+  register: services_root_source
+  changed_when: false
+  when: display_autologin | string == 'auto'
+
+- name: List the devices underneath the root filesystem
+  ansible.builtin.command:
+    argv: [lsblk, --inverse, --noheadings, --list, --output, TYPE, "{{ services_root_source.stdout | trim }}"]
+  register: services_root_stack
+  changed_when: false
+  failed_when: false
+  when: display_autologin | string == 'auto'
+
+- name: Decide whether to log in automatically
+  ansible.builtin.set_fact:
+    services_autologin: >-
+      {{ ('crypt' in (services_root_stack.stdout_lines | map('trim') | list))
+         if display_autologin | string == 'auto' else display_autologin | bool }}
+
+- name: Report the autologin decision
+  ansible.builtin.debug:
+    msg: >-
+      Display manager autologin {{ 'enabled' if services_autologin else 'disabled' }}
+      (display_autologin={{ display_autologin }}{{ ', root is encrypted'
+      if display_autologin | string == 'auto' and services_autologin else '' }}).
+
+- name: Configure Plasma Login autologin
+  when: ansible_facts.distribution == 'Archlinux'
+  become: true
+  community.general.ini_file:
+    path: /etc/plasmalogin.conf
+    section: Autologin
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    state: "{{ 'present' if services_autologin else 'absent' }}"
+    no_extra_spaces: true
+    mode: "0644"
+  loop:
+    - { option: User, value: "{{ desktop_user }}" }
+    - { option: Session, value: "{{ display_session }}.desktop" }
+  loop_control:
+    label: "{{ item.option }}"
+
+- name: Configure GDM autologin and the default session
+  when: ansible_facts.distribution == 'Ubuntu'
+  become: true
+  block:
+    - name: Set GDM autologin
+      community.general.ini_file:
+        path: /etc/gdm3/custom.conf
+        section: daemon
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        state: "{{ item.state }}"
+        no_extra_spaces: true
+        mode: "0644"
+      loop:
+        - { option: AutomaticLoginEnable, value: "{{ services_autologin | string | lower }}", state: present }
+        - { option: AutomaticLogin, value: "{{ desktop_user }}", state: "{{ 'present' if services_autologin else 'absent' }}" }
+      loop_control:
+        label: "{{ item.option }}"
+
+    # GDM picks the session (for autologin too) from AccountsService.
+    - name: Make the desktop session the user's default
+      community.general.ini_file:
+        path: "/var/lib/AccountsService/users/{{ desktop_user }}"
+        section: User
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        no_extra_spaces: true
+        mode: "0600"
+      loop:
+        - { option: Session, value: "{{ display_session }}" }
+        - { option: SystemAccount, value: "false" }
+      loop_control:
+        label: "{{ item.option }}"

@@ -1,0 +1,128 @@
+- name: Add the desktop user to extra groups
+  become: true
+  ansible.builtin.user:
+    name: "{{ desktop_user }}"
+    groups: "{{ desktop_user_groups }}"
+    append: true
+
+- name: Boot into the graphical target
+  become: true
+  ansible.builtin.file:
+    src: /usr/lib/systemd/system/graphical.target
+    dest: /etc/systemd/system/default.target
+    state: link
+    force: true
+
+- name: Enable the display manager
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ display_manager_service }}"
+    enabled: true
+
+- name: Configure display manager autologin
+  ansible.builtin.include_tasks: autologin.yml
+
+- name: Create directories for system config files
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ system_files | map(attribute='path') | map('dirname') | unique }}"
+
+- name: Install system config files
+  become: true
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/system{{ item.path }}"
+    dest: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ system_files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  register: services_system_files
+
+- name: Enable and start system services
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop: "{{ system_services }}"
+
+- name: Restart services whose config changed
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: restarted
+  loop: >-
+    {{ services_system_files.results | selectattr('changed')
+       | selectattr('item.restarts', 'defined') | map(attribute='item.restarts') | unique }}
+
+- name: List installed system units
+  ansible.builtin.command:
+    argv: [systemctl, list-unit-files, --type=service, --no-legend, --plain]
+  register: services_system_units
+  changed_when: false
+
+- name: Disable services the desktop does not run
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  loop: "{{ system_services_disabled }}"
+  when: item in (services_system_units.stdout_lines | map('split') | map('first'))
+
+- name: Check for a systemd user manager
+  ansible.builtin.command:
+    argv: [systemctl, --user, show-environment]
+  register: services_user_bus
+  changed_when: false
+  failed_when: false
+
+- name: Report that user services were skipped
+  ansible.builtin.debug:
+    msg: User systemd bus is unavailable; skipping user services.
+  when: services_user_bus.rc != 0
+
+- name: Manage systemd user services
+  when: services_user_bus.rc == 0
+  block:
+    - name: Reload systemd user units
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+        scope: user
+      changed_when: false
+
+    - name: List installed user units
+      ansible.builtin.command:
+        argv: [systemctl, --user, list-unit-files, --type=service, --no-legend, --plain]
+      register: services_user_units
+      changed_when: false
+
+    - name: Disable stale or conflicting user services
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        scope: user
+        enabled: false
+        state: stopped
+      loop: "{{ user_services_disabled }}"
+      when: item in (services_user_units.stdout_lines | map('split') | map('first'))
+
+    - name: Check whether a graphical session is running
+      ansible.builtin.command:
+        argv: [systemctl, --user, is-active, --quiet, graphical-session.target]
+      register: services_graphical_session
+      changed_when: false
+      failed_when: false
+
+    - name: Enable user services
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        scope: user
+        enabled: true
+        # Start now only inside a graphical session; otherwise they start at next login.
+        state: "{{ 'started' if services_graphical_session.rc == 0 else omit }}"
+      loop: "{{ user_services }}"

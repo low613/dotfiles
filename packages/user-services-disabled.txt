@@ -1,4 +1,0 @@
-# Conflicting or stale user services.
-elephant.service
-hypridle.service
-mako.service

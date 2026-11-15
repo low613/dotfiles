@@ -1,0 +1,7 @@
+- name: Install Arch Linux packages
+  ansible.builtin.include_tasks: archlinux.yml
+  when: ansible_facts.distribution == 'Archlinux'
+
+- name: Install Ubuntu packages
+  ansible.builtin.include_tasks: ubuntu.yml
+  when: ansible_facts.distribution == 'Ubuntu'

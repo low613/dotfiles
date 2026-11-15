@@ -1,0 +1,29 @@
+# Provision the desktop on Arch Linux or Ubuntu 26.04 (Resolute Raccoon).
+#
+#   ansible-galaxy collection install -r requirements.yml
+#   ansible-playbook site.yml --ask-become-pass
+#
+# Tags: packages, dotfiles, services.
+- name: Provision desktop
+  hosts: all
+  # Facts are gathered as the desktop user; tasks escalate only when needed.
+  gather_facts: true
+  pre_tasks:
+    - name: Check the distribution is supported
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.distribution in ['Archlinux', 'Ubuntu']
+          - ansible_facts.user_id != 'root'
+        fail_msg: >-
+          Run this playbook as your normal user on Arch Linux or Ubuntu
+          (it escalates with sudo only where needed).
+      tags: [always]
+  roles:
+    - role: packages
+      tags: [packages]
+    - role: dotfiles
+      tags: [dotfiles]
+    - role: agents
+      tags: [agents]
+    - role: services
+      tags: [services]
