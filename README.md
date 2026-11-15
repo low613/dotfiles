@@ -53,6 +53,10 @@ Useful variables (`-e name=value`):
 - `packages_skip`: names from the package files to leave out, e.g.
   `-e '{"packages_skip": ["ventoy-bin", "brave-browser-release"]}'`.
 - `packages_arch_full_upgrade=false`: skip the `pacman -Syu` before installing.
+  The package database is then not refreshed either (that would be a partial
+  upgrade), except to read a newly added repository.
+- `firewall_enabled=true`: turn ufw filtering on (deny incoming), allowing only
+  `firewall_allow`, e.g. `-e '{"firewall_enabled": true, "firewall_allow": [{"port": 22}]}'`.
 - `dotfiles_dir`: where the repo lives, if not where the playbook is run from.
 
 ## What the playbook does
@@ -62,16 +66,17 @@ Useful variables (`-e name=value`):
 - Arch: refreshes the keyring, runs a full upgrade, installs
   `arch_pacman_packages`, builds `yay-bin` if `yay` is missing, and installs
   `arch_aur_packages` with yay. yay needs `sudo pacman` without a prompt, so a
-  sudoers rule allowing just that is added for the AUR step and always removed
-  afterwards.
+  sudoers rule allowing just that is added for the AUR step and removed
+  afterwards (and on every later run, in case a run was interrupted).
 - Ubuntu: adds vendor apt repos (Chrome, Brave, VS Code, GitHub CLI, Mozilla
   Firefox, OnlyOffice, DBeaver, Beekeeper Studio) and installs the apt list.
-  Tools Ubuntu does not ship come from pinned GitHub/vendor releases unpacked
-  into `/opt/dotfiles/<name>/<version>` and linked into `/usr/local/bin`.
+  Tools Ubuntu does not ship come from pinned GitHub/vendor releases, verified
+  against their pinned `sha256`, unpacked into
+  `/opt/dotfiles/<name>/<version>` and linked into `/usr/local/bin`.
   `niri`, `xwayland-satellite`, `wiremix` and `wl-clip-persist` are built
   from source with cargo. The CaskaydiaMono Nerd Font and adw-gtk3 theme are
   installed from their releases, and Zen, Bitwarden and Bruno from Flathub.
-  To upgrade a pinned tool, bump its `version` and `url` in
+  To upgrade a pinned tool, bump its `version`, `url` and `sha256` in
   `packages/ubuntu.yml`.
 
 **dotfiles**
@@ -113,10 +118,16 @@ Useful variables (`-e name=value`):
 
 - Installs the `system/` config files, restarting their service when they
   change, and enables keyd.
-- Enables the display manager (Plasma Login on Arch, GDM on Ubuntu) and boots
-  to `graphical.target`; enables bluetooth, docker, power-profiles-daemon and
-  ufw; leaves MariaDB and PostgreSQL installed but stopped; adds you to the
-  `docker` and `kvm` groups.
+- Enables the display manager (Plasma Login on Arch, GDM on Ubuntu), first
+  disabling any other one that owns `display-manager.service`, and boots to
+  `graphical.target`; enables bluetooth, docker, power-profiles-daemon, keyd and
+  the ufw service; leaves MariaDB and PostgreSQL (and on Ubuntu iwd and caddy,
+  which apt starts) installed but stopped; adds you to the `docker` and `kvm`
+  groups.
+- ufw's service is enabled, but filtering stays off (ufw's default
+  `ENABLED=no`) unless `firewall_enabled` is set.
+- If a kernel upgrade during the run removed the running kernel's modules,
+  services are enabled but not started, and the run ends with a reboot notice.
 - Logs you straight into niri from the display manager when the root
   filesystem is on an encrypted (LUKS/dm-crypt) device, since the disk
   passphrase at boot already authenticates you. Set `display_autologin` to

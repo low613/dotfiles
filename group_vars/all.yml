@@ -68,6 +68,18 @@ system_files:
 system_services_disabled:
   - mariadb.service
   - postgresql.service
+# apt starts every daemon it installs; these are left off on Ubuntu to match
+# Arch (iwd would fight NetworkManager's wpa_supplicant; caddy listens on :80).
+system_services_disabled_by_distro:
+  Ubuntu:
+    - caddy.service
+    - iwd.service
+
+# ufw is installed and its service enabled, but filtering stays off (ufw's
+# default ENABLED=no) unless this is true: then incoming traffic is denied
+# except for firewall_allow, e.g. [{port: 22}, {port: 8080, proto: tcp}].
+firewall_enabled: false
+firewall_allow: []
 
 # Extra groups for the desktop user.
 desktop_user_groups:

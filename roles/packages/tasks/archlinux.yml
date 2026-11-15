@@ -2,19 +2,8 @@
   ansible.builtin.include_vars:
     file: "{{ playbook_dir }}/packages/archlinux.yml"
 
-- name: Refresh the package database and keyring
-  become: true
-  community.general.pacman:
-    name: archlinux-keyring
-    state: latest
-    update_cache: true
-
-- name: Upgrade the system
-  become: true
-  community.general.pacman:
-    upgrade: true
-  when: packages_arch_full_upgrade | bool
-
+# Trust keys and write repository definitions before any database sync:
+# pacman refuses to sync at all while a configured repo's key is untrusted.
 - name: Add third-party pacman repositories
   become: true
   block:
@@ -27,9 +16,11 @@
       loop_control:
         label: "{{ item.name }}"
 
+    # Validity "f"/"u" means the key is locally signed by the pacman keyring
+    # (trusted); an imported but unsigned key is still rejected by TrustedOnly.
     - name: Check whether repository keys are trusted
       ansible.builtin.command:
-        argv: [pacman-key, --list-keys, "{{ item.key_fingerprint }}"]
+        argv: [gpg, --homedir, /etc/pacman.d/gnupg, --no-permission-warning, --with-colons, --list-keys, "{{ item.key_fingerprint }}"]
       loop: "{{ arch_pacman_repositories }}"
       loop_control:
         label: "{{ item.name }}"
@@ -48,7 +39,9 @@
     - name: Locally sign repository keys
       ansible.builtin.command:
         argv: [pacman-key, --lsign-key, "{{ item.item.key_fingerprint }}"]
-      loop: "{{ packages_repo_keys.results | rejectattr('rc', 'eq', 0) }}"
+      loop: >-
+        {{ packages_repo_keys.results
+           | rejectattr('stdout', 'search', '(?m)^pub:[fu]:') }}
       loop_control:
         label: "{{ item.item.name }}"
       changed_when: true
@@ -64,6 +57,7 @@
       loop: "{{ arch_pacman_repositories }}"
       loop_control:
         label: "{{ item.name }}"
+      register: packages_repo_defs
 
     - name: Include repository definitions in pacman.conf
       ansible.builtin.lineinfile:
@@ -72,13 +66,33 @@
       loop: "{{ arch_pacman_repositories }}"
       loop_control:
         label: "{{ item.name }}"
+      register: packages_repo_includes
+
+# Syncing the package database without upgrading everything is a partial
+# upgrade, so the database is only refreshed as part of a full upgrade (or to
+# read a newly added repository).
+- name: Refresh the package database and keyring
+  become: true
+  community.general.pacman:
+    name: archlinux-keyring
+    state: latest
+    update_cache: true
+  when: packages_arch_full_upgrade | bool
+
+- name: Upgrade the system
+  become: true
+  community.general.pacman:
+    upgrade: true
+  when: packages_arch_full_upgrade | bool
 
 - name: Install pacman packages
   become: true
   community.general.pacman:
     name: "{{ arch_pacman_packages + (arch_pacman_repositories | map(attribute='packages') | flatten) }}"
     state: present
-    update_cache: true
+    update_cache: >-
+      {{ packages_arch_full_upgrade | bool
+         or packages_repo_defs is changed or packages_repo_includes is changed }}
 
 - name: Check whether yay is installed
   ansible.builtin.stat:
@@ -128,6 +142,14 @@
 - name: List installed packages
   ansible.builtin.package_facts:
     manager: pacman
+
+# A run killed mid-build skips the `always:` cleanup below, and later runs may
+# skip the AUR block entirely, so remove any leftover rule unconditionally.
+- name: Remove a leftover temporary pacman sudo rule
+  become: true
+  ansible.builtin.file:
+    path: /etc/sudoers.d/90-dotfiles-aur
+    state: absent
 
 - name: Install AUR packages
   vars:

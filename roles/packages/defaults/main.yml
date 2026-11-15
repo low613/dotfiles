@@ -9,3 +9,6 @@ packages_build_root: "{{ desktop_home }}/.cache/dotfiles/build"
 # Skip packages whose downloads need a network you may not want hit (for
 # example in throwaway VMs). Names match arch_aur_packages or Ubuntu tool names.
 packages_skip: []
+
+# Verified downloads are staged here and removed after installing.
+packages_download_dir: /var/cache/dotfiles

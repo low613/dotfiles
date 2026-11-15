@@ -1,0 +1,27 @@
+# Install one standalone .deb. Expects `deb` (see ubuntu_debs). Pinned debs
+# (with `sha256`) are verified before install; unpinned ones install from URL.
+- name: "Install from URL | {{ deb.name }}"
+  become: true
+  ansible.builtin.apt:
+    deb: "{{ deb.url }}"
+  when: deb.sha256 is not defined
+
+- name: "Install the verified package | {{ deb.name }}"
+  become: true
+  when: deb.sha256 is defined
+  block:
+    - name: "Download the verified package | {{ deb.name }}"
+      ansible.builtin.get_url:
+        url: "{{ deb.url }}"
+        dest: "{{ packages_download_dir }}/{{ deb.url | basename }}"
+        checksum: "sha256:{{ deb.sha256 }}"
+        mode: "0644"
+
+    - name: "Install the package | {{ deb.name }}"
+      ansible.builtin.apt:
+        deb: "{{ packages_download_dir }}/{{ deb.url | basename }}"
+  always:
+    - name: "Remove the downloaded package | {{ deb.name }}"
+      ansible.builtin.file:
+        path: "{{ packages_download_dir }}/{{ deb.url | basename }}"
+        state: absent

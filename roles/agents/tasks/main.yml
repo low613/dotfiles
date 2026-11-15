@@ -1,5 +1,10 @@
+# The CLIs are packages too, so `--tags packages` installs them. Tags on a
+# dynamic include only tag the include itself; `apply` passes them to its tasks.
 - name: Install agent apps
-  ansible.builtin.include_tasks: install.yml
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [packages]
   tags: [packages]
 
 - name: Install agent configs

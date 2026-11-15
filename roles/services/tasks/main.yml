@@ -1,3 +1,14 @@
+# A kernel upgrade earlier in the run removes the running kernel's modules, so
+# services needing one (keyd: uinput, docker: overlay) cannot start until reboot.
+- name: Check that the running kernel's modules are installed
+  ansible.builtin.stat:
+    path: "/usr/lib/modules/{{ ansible_facts.kernel }}"
+  register: services_kernel_modules
+
+- name: Note whether a reboot is required before starting services
+  ansible.builtin.set_fact:
+    services_reboot_required: "{{ not services_kernel_modules.stat.exists }}"
+
 - name: Add the desktop user to extra groups
   become: true
   ansible.builtin.user:
@@ -12,6 +23,22 @@
     dest: /etc/systemd/system/default.target
     state: link
     force: true
+
+# Only one unit can own display-manager.service; enabling ours while another
+# display manager holds it fails, so hand it over first.
+- name: Find the active display manager
+  ansible.builtin.stat:
+    path: /etc/systemd/system/display-manager.service
+  register: services_dm_link
+
+- name: Disable a different display manager
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ services_dm_link.stat.lnk_source | basename }}"
+    enabled: false
+  when:
+    - services_dm_link.stat.islnk | default(false)
+    - services_dm_link.stat.lnk_source | basename != display_manager_service
 
 - name: Enable the display manager
   become: true
@@ -48,7 +75,7 @@
   ansible.builtin.systemd_service:
     name: "{{ item }}"
     enabled: true
-    state: started
+    state: "{{ omit if services_reboot_required else 'started' }}"
   loop: "{{ system_services }}"
 
 - name: Restart services whose config changed
@@ -59,6 +86,31 @@
   loop: >-
     {{ services_system_files.results | selectattr('changed')
        | selectattr('item.restarts', 'defined') | map(attribute='item.restarts') | unique }}
+  when: not services_reboot_required
+
+# Off by default: ufw ships with ENABLED=no, and enabling it changes what is
+# reachable on the machine (set firewall_allow for anything that must be).
+- name: Turn on the firewall
+  when: firewall_enabled | bool
+  become: true
+  block:
+    - name: Allow listed incoming ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item.port | string }}"
+        proto: "{{ item.proto | default('tcp') }}"
+      loop: "{{ firewall_allow }}"
+      loop_control:
+        label: "{{ item.port }}/{{ item.proto | default('tcp') }}"
+
+    - name: Deny other incoming traffic
+      community.general.ufw:
+        default: deny
+        direction: incoming
+
+    - name: Enable ufw
+      community.general.ufw:
+        state: enabled
 
 - name: List installed system units
   ansible.builtin.command:
@@ -72,7 +124,7 @@
     name: "{{ item }}"
     enabled: false
     state: stopped
-  loop: "{{ system_services_disabled }}"
+  loop: "{{ system_services_disabled + system_services_disabled_by_distro[ansible_facts.distribution] | default([]) }}"
   when: item in (services_system_units.stdout_lines | map('split') | map('first'))
 
 - name: Check for a systemd user manager
@@ -126,3 +178,10 @@
         # Start now only inside a graphical session; otherwise they start at next login.
         state: "{{ 'started' if services_graphical_session.rc == 0 else omit }}"
       loop: "{{ user_services }}"
+
+- name: Warn that a reboot is required
+  ansible.builtin.debug:
+    msg: >-
+      The running kernel ({{ ansible_facts.kernel }}) was replaced during this run.
+      System services were enabled but not started; reboot to start them.
+  when: services_reboot_required
